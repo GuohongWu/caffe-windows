@@ -166,7 +166,7 @@ void SGDSolver<Dtype>::ApplyUpdate() {
         scale_layers += std::to_string(this->net_->layers()[k]->blobs()[0]->asum_data() / this->net_->layers()[k]->blobs()[0]->count()) + " ";
       }
     }
-    if (scale_layers.size() > 20) LOG(INFO) << scale_layers;
+   // if (scale_layers.size() > 20) LOG(INFO) << scale_layers;
     string parameter_layers = "parameter layer:";
     for (int k = 0; k < this->net_->layers().size(); k++) {
       if (strstr(this->net_->layers()[k]->type(), "Parameter") != NULL
@@ -174,7 +174,7 @@ void SGDSolver<Dtype>::ApplyUpdate() {
         parameter_layers += std::to_string(this->net_->layers()[k]->blobs()[0]->asum_data() / this->net_->layers()[k]->blobs()[0]->count()) + " ";
       }
     }
-    if (parameter_layers.size() > 20) LOG(INFO) << parameter_layers;
+    //if (parameter_layers.size() > 20) LOG(INFO) << parameter_layers;
     string prelu_layers = "prelu slope:";
     for (int k = 0; k < this->net_->layers().size(); k++) {
       if (strstr(this->net_->layers()[k]->type(), "PReLU") != NULL
@@ -182,7 +182,7 @@ void SGDSolver<Dtype>::ApplyUpdate() {
         prelu_layers += std::to_string(this->net_->layers()[k]->blobs()[0]->asum_data() / this->net_->layers()[k]->blobs()[0]->count()) + " ";
       }
     }
-    if (prelu_layers.size() > 20) LOG(INFO) << prelu_layers;
+    //if (prelu_layers.size() > 20) LOG(INFO) << prelu_layers;
     string weight_gradient_norm = "weight diff/data:";
     for (int k = 0; k < this->net_->layers().size(); k++) {
       if (strstr(this->net_->layers()[k]->type(), "Convolution") != NULL
@@ -197,7 +197,7 @@ void SGDSolver<Dtype>::ApplyUpdate() {
         }
       }
     }
-    if (weight_gradient_norm.size() > 20) LOG(INFO) << weight_gradient_norm;
+   // if (weight_gradient_norm.size() > 20) LOG(INFO) << weight_gradient_norm;
   }
 #endif
   this->net_->Update();

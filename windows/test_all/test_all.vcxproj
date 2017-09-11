@@ -61,6 +61,7 @@
     <ClCompile>
       <DisableSpecificWarnings>4005;%(DisableSpecificWarnings)</DisableSpecificWarnings>
       <AdditionalIncludeDirectories>$(ProjectDir)\..\..\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <TreatWarningAsError>false</TreatWarningAsError>
     </ClCompile>
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>

@@ -207,6 +207,7 @@ void MarginInnerProductLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bot
       top_data[i * N_ + label_value] = x_norm_data[i] * ((Dtype)2. * sign_0_data[i * N_ + label_value] * 
                                        cos_theta_quadratic_data[i * N_ + label_value] - (Dtype)1.);
     }
+	// wgh: lambda is a linear-weighted parameter, that is, top_data = (1/(1+lambda)) * |x| * cos_m_theta + (lambda/(1+lambda)) * |x| * cos_theta
     // + lambda * x'w
     caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasTrans, M_, N_, K_, lambda_,
       bottom_data, weight, (Dtype)1., top_data);
@@ -249,6 +250,7 @@ void MarginInnerProductLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bot
                                         (Dtype)8. * cos_theta_quadratic_data[i * N_ + label_value] + 
                                         (Dtype)1.) + sign_4_data[i * N_ + label_value]);
     }
+	// wgh: lambda is a linear-weighted parameter, that is, top_data = (1/(1+lambda)) * |x| * cos_m_theta + (lambda/(1+lambda)) * |x| * cos_theta
     // + lambda * x'w
     caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasTrans, M_, N_, K_, lambda_,
       bottom_data, weight, (Dtype)1., top_data);

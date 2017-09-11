@@ -37,6 +37,7 @@ class ContrastiveLossLayerTest : public MultiDeviceTest<TypeParam> {
       blob_bottom_y_->mutable_cpu_data()[i] = caffe_rng_rand() % 2;  // 0 or 1
     }
     blob_bottom_vec_.push_back(blob_bottom_y_);
+	blob_bottom_vec_.push_back(blob_bottom_y_);
     blob_top_vec_.push_back(blob_top_loss_);
   }
   virtual ~ContrastiveLossLayerTest() {
