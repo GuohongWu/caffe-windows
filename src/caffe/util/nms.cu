@@ -6,8 +6,7 @@ namespace caffe {
 
 template <typename Dtype>
 __device__
-static
-Dtype iou(const Dtype A[], const Dtype B[])
+Dtype IoU_gpu(const Dtype A[], const Dtype B[])
 {
   // overlapped region (= box)
   const Dtype x1 = max(A[0],  B[0]);
@@ -98,7 +97,7 @@ void nms_mask(const Dtype boxes[], unsigned long long mask[],
         const Dtype* const box_i = boxes_i + di * 4;
 
         // if IoU(box j, box i) > threshold,  di-th bit = 1
-        if (iou(box_j, box_i) > nms_thresh) {
+        if (IoU_gpu(box_j, box_i) > nms_thresh) {
           mask_j |= 1ULL << di;
         }
       }
@@ -193,19 +192,23 @@ void nms_gpu(const int num_boxes,
 
 template
 void nms_gpu(const int num_boxes,
-             const float boxes_gpu[],
+             const float boxes_gpu[], 
              Blob<int>* const p_mask,
              int index_out_cpu[],
              int* const num_out,
              const int base_index,
-             const float nms_thresh, const int max_num_out);
+             const float nms_thresh,
+             const int max_num_out);
+
 template
 void nms_gpu(const int num_boxes,
-             const double boxes_gpu[],
+             const double boxes_gpu[], 
              Blob<int>* const p_mask,
              int index_out_cpu[],
              int* const num_out,
              const int base_index,
-             const double nms_thresh, const int max_num_out);
+             const double nms_thresh,
+             const int max_num_out);
+
 
 }  // namespace caffe

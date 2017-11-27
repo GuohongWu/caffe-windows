@@ -158,7 +158,7 @@ namespace caffe {
 
 		virtual inline int ExactNumBottomBlobs() const { return -1; }
 		virtual inline int MinBottomBlobs() const { return 2; }
-		virtual inline int MaxBottomBlobs() const { return 3; }
+		virtual inline int MaxBottomBlobs() const { return 4; }
 
 		/**
 		* Unlike most loss layers, in the SmoothL1LossLayer we can backpropagate
@@ -181,8 +181,9 @@ namespace caffe {
 
 		Blob<Dtype> diff_;
 		Blob<Dtype> errors_;
+		Blob<Dtype> ones_;
 		bool has_weights_;
-    Dtype turn_point_;
+		Dtype sigma2_;
 	};
 
   /* Yuanyang adding triplet loss layer */

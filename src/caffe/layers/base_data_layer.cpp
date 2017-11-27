@@ -20,17 +20,33 @@ BaseDataLayer<Dtype>::BaseDataLayer(const LayerParameter& param)
 template <typename Dtype>
 void BaseDataLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
-  if (top.size() == 1) {
-    output_labels_ = false;
-  } else {
-    output_labels_ = true;
-  }
-  if (top.size() == 3) {
-    output_weights_ = true;
-  }
-  else {
-    output_weights_ = false;
-  }
+	output_segMask_ = false;
+	output_poseKeypoints_ = false;
+	if (top.size() == 1) {
+		output_labels_ = false;
+	}
+	else {
+		output_labels_ = true;
+	}
+	if (top.size() >= 3) {
+		output_weights_ = true;
+	}
+	else {
+		output_weights_ = false;
+	}
+	if (top.size() == 4) {
+		if (this->layer_param_.top(3) == "poseKeypoints_lists") {
+			output_poseKeypoints_ = true;
+		}
+		else {
+			output_segMask_ = true;
+		}
+	}
+	if (top.size() == 5) {
+		output_segMask_ = true;
+		output_poseKeypoints_ = true;
+	}
+
   data_transformer_.reset(
       new DataTransformer<Dtype>(transform_param_, this->phase_));
   data_transformer_->InitRand();
@@ -67,17 +83,29 @@ void BasePrefetchingDataLayer<Dtype>::LayerSetUp(
     if (this->output_weights_) {
       prefetch_[i]->weight_.mutable_cpu_data();
     }
+	if (this->output_segMask_) {
+		prefetch_[i]->segMask_.mutable_cpu_data();
+	}
+	if (this->output_poseKeypoints_) {
+		prefetch_[i]->poseKeypoints_.mutable_cpu_data();
+	}
   }
 #ifndef CPU_ONLY
   if (Caffe::mode() == Caffe::GPU) {
     for (int i = 0; i < prefetch_.size(); ++i) {
       prefetch_[i]->data_.mutable_gpu_data();
       if (this->output_labels_) {
-        prefetch_[i]->label_.mutable_gpu_data();
+		prefetch_[i]->label_.mutable_gpu_data();
       }
       if (this->output_weights_) {
-        prefetch_[i]->weight_.mutable_gpu_data();
+		prefetch_[i]->weight_.mutable_gpu_data();
       }
+	  if (this->output_segMask_) {
+		  prefetch_[i]->segMask_.mutable_gpu_data();
+	  }
+	  if (this->output_poseKeypoints_) {
+		  prefetch_[i]->poseKeypoints_.mutable_gpu_data();
+	  }
     }
   }
 #endif
@@ -109,6 +137,12 @@ void BasePrefetchingDataLayer<Dtype>::InternalThreadEntry() {
         if (this->output_weights_) {
           batch->weight_.data().get()->async_gpu_push(stream);
         }
+		if (this->output_segMask_) {
+			batch->segMask_.data().get()->async_gpu_push(stream);
+		}
+		if (this->output_poseKeypoints_) {
+			batch->poseKeypoints_.data().get()->async_gpu_push(stream);
+		}
         CUDA_CHECK(cudaStreamSynchronize(stream));
       }
 #endif
@@ -143,6 +177,20 @@ void BasePrefetchingDataLayer<Dtype>::Forward_cpu(
     // Reshape to loaded weights_.
     top[2]->ReshapeLike(prefetch_current_->weight_);
     top[2]->set_cpu_data(prefetch_current_->weight_.mutable_cpu_data());
+  }
+  if (this->output_segMask_) {
+	  top[3]->ReshapeLike(prefetch_current_->segMask_);
+	  top[3]->set_cpu_data(prefetch_current_->segMask_.mutable_cpu_data());
+  }
+  if (this->output_poseKeypoints_) {
+	  if (this->output_segMask_) {
+		  top[4]->ReshapeLike(prefetch_current_->poseKeypoints_);
+		  top[4]->set_cpu_data(prefetch_current_->poseKeypoints_.mutable_cpu_data());
+	  }
+	  else {
+		  top[3]->ReshapeLike(prefetch_current_->poseKeypoints_);
+		  top[3]->set_cpu_data(prefetch_current_->poseKeypoints_.mutable_cpu_data());
+	  }
   }
 }
 

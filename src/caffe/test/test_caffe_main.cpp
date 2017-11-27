@@ -34,5 +34,8 @@ int main(int argc, char** argv) {
   cout << "Current device name: " << CAFFE_TEST_CUDA_PROP.name << endl;
 #endif
   // invoke the test.
-  return RUN_ALL_TESTS();
+  int res = RUN_ALL_TESTS();
+
+  system("pause");
+  return res;
 }

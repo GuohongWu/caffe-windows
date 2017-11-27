@@ -6,8 +6,7 @@ using std::min;
 namespace caffe {
 
 template <typename Dtype>
-static
-Dtype iou(const Dtype A[], const Dtype B[])
+Dtype IoU_cpu(const Dtype A[], const Dtype B[])
 {
   if (A[0] > B[2] || A[1] > B[3] || A[2] < B[0] || A[3] < B[1]) {
     return 0;
@@ -32,12 +31,12 @@ Dtype iou(const Dtype A[], const Dtype B[])
   return area / (A_area + B_area - area);
 }
 
-template float iou(const float A[], const float B[]);
-template double iou(const double A[], const double B[]);
+template float IoU_cpu(const float A[], const float B[]);
+template double IoU_cpu(const double A[], const double B[]);
 
 template <typename Dtype>
 void nms_cpu(const int num_boxes,
-             const Dtype boxes[],
+             const Dtype boxes[], int box_width, 
              int index_out[],
              int* const num_out,
              const int base_index,
@@ -60,7 +59,7 @@ void nms_cpu(const int num_boxes,
     }
 
     for (int j = i + 1; j < num_boxes; ++j) {
-      if (!is_dead[j] && iou(&boxes[i * 5], &boxes[j * 5]) > nms_thresh) {
+      if (!is_dead[j] && IoU_cpu(&boxes[i * box_width], &boxes[j * box_width]) > nms_thresh) {
         is_dead[j] = 1;
       }
     }
@@ -72,14 +71,14 @@ void nms_cpu(const int num_boxes,
 
 template
 void nms_cpu(const int num_boxes,
-             const float boxes[],
+             const float boxes[], int box_width, 
              int index_out[],
              int* const num_out,
              const int base_index,
              const float nms_thresh, const int max_num_out);
 template
 void nms_cpu(const int num_boxes,
-             const double boxes[],
+             const double boxes[], int box_width, 
              int index_out[],
              int* const num_out,
              const int base_index,

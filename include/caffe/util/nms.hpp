@@ -7,9 +7,16 @@
 
 namespace caffe {
 
+	template <typename Dtype>
+	Dtype IoU_cpu(const Dtype A[], const Dtype B[]);
+
+	template <typename Dtype>
+	__device__
+	Dtype IoU_gpu(const Dtype A[], const Dtype B[]);
+
 template <typename Dtype>
 void nms_cpu(const int num_boxes,
-             const Dtype boxes[],
+             const Dtype boxes[], int box_width, 
              int index_out[],
              int* const num_out,
              const int base_index,
@@ -18,7 +25,7 @@ void nms_cpu(const int num_boxes,
 
 template <typename Dtype>
 void nms_gpu(const int num_boxes,
-             const Dtype boxes_gpu[],
+             const Dtype boxes_gpu[], 
              Blob<int>* const p_mask,
              int index_out_cpu[],
              int* const num_out,

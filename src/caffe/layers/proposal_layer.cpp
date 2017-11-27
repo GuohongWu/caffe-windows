@@ -132,8 +132,8 @@ static void generate_anchors(int base_size,
     for (int j = 0; j < num_scales; ++j)
     {
       // transformed width & height for given scale factors
-      const Dtype scale_w = (Dtype)0.5 * ROUND(ratio_w * scales[j] * 1.0 / base_size - (Dtype)1);
-      const Dtype scale_h = (Dtype)0.5 * ROUND(ratio_h * scales[j] * 1.0 / base_size - (Dtype)1);
+      const Dtype scale_w = (Dtype)0.5 * ROUND(ratio_w * scales[j] * 1.0 - (Dtype)1);
+      const Dtype scale_h = (Dtype)0.5 * ROUND(ratio_h * scales[j] * 1.0 - (Dtype)1);
 
       // (x1, y1, x2, y2) for transformed box
       p_anchors[0] = center - scale_w;
@@ -317,7 +317,7 @@ void ProposalLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype> *> &bottom,
 
     sort_box(proposals_.mutable_cpu_data(), 0, num_proposals - 1, pre_nms_topn_);
 
-    nms_cpu(pre_nms_topn, proposals_.cpu_data(),
+    nms_cpu(pre_nms_topn, proposals_.cpu_data(), proposals_.shape(1), 
             roi_indices_.mutable_cpu_data(), &num_rois,
             0, nms_thresh_, post_nms_topn_);
 

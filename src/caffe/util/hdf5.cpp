@@ -81,6 +81,9 @@ void hdf5_load_nd_dataset_helper(
   for (int i = 0; i < dims.size(); ++i) {
     blob_dims[i] = dims[i];
   }
+  if (blob_dims.size() == 3) {
+	  blob_dims.insert(blob_dims.begin() + 1, 1);
+  }
 
   if (reshape) {
     blob->Reshape(blob_dims);

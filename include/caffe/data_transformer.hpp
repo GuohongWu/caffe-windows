@@ -75,6 +75,11 @@ class DataTransformer {
    *    set_cpu_data() is used. See image_data_layer.cpp for an example.
    */
   void Transform(const cv::Mat& cv_img, Blob<Dtype>* transformed_blob, bool transpose = false);
+
+  /* new add on 2017/11/10.
+   * Do data augumentation starting from an rare input image.
+   */
+  void Transform(const cv::Mat& cv_img, Blob<Dtype>* transformed_blob, const cv::Mat& cv_mask_img, Blob<Dtype>* transformed_segMask_blob, Dtype* bbox_blob, Dtype* poseKeypoints_blob,const int bbox_nums);
 #endif  // USE_OPENCV
 
   /**

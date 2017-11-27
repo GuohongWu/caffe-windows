@@ -25,6 +25,20 @@ void BasePrefetchingDataLayer<Dtype>::Forward_gpu(
     // Copy the weights.
     top[2]->set_gpu_data(prefetch_current_->weight_.mutable_gpu_data());
   }
+  if (this->output_segMask_) {
+	  top[3]->ReshapeLike(prefetch_current_->segMask_);
+	  top[3]->set_gpu_data(prefetch_current_->segMask_.mutable_gpu_data());
+  }
+  if (this->output_poseKeypoints_) {
+	  if (this->output_segMask_) {
+		  top[4]->ReshapeLike(prefetch_current_->poseKeypoints_);
+		  top[4]->set_gpu_data(prefetch_current_->poseKeypoints_.mutable_gpu_data());
+	  }
+	  else {
+		  top[3]->ReshapeLike(prefetch_current_->poseKeypoints_);
+		  top[3]->set_gpu_data(prefetch_current_->poseKeypoints_.mutable_gpu_data());
+	  }
+  }
 }
 
 INSTANTIATE_LAYER_GPU_FORWARD(BasePrefetchingDataLayer);

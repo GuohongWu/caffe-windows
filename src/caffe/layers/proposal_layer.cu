@@ -210,7 +210,7 @@ void ProposalLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
 
     sort_box(proposals_.mutable_cpu_data(), 0, num_proposals - 1, pre_nms_topn_);
 
-    nms_gpu(pre_nms_topn,  proposals_.gpu_data(),  &nms_mask_,
+    nms_gpu(pre_nms_topn,  proposals_.gpu_data(), &nms_mask_,
             roi_indices_.mutable_cpu_data(),  &num_rois,
             0,  nms_thresh_,  post_nms_topn_);
 

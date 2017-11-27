@@ -434,9 +434,9 @@ message LayerParameter {
   optional GeneralTripletParameter general_triplet_loss_param = 217;
   optional SoftTruncationParameter soft_truncation_param = 218;
   optional ProposalParameter proposal_param = 219;
-  optional PSROIPoolingParameter psroi_pooling_param = 220;
+  // optional PSROIPoolingParameter psroi_pooling_param = 220;
   optional PairwiseParameter pairwise_param = 221;
-  optional SmoothL1Parameter smoothl1_param = 222;
+  optional SmoothL1LossParameter smooth_l1_loss_param = 222;
   optional BatchContrastiveParameter batch_contrastive_loss_param = 223;
   optional PermuteParameter permute_param = 224;
   optional TruncationParameter truncation_param = 225;
@@ -447,6 +447,19 @@ message LayerParameter {
   optional OrdinalRegressionParameter ordinal_regression_loss_param = 230;
   optional ResizeParameter resize_param = 231;
   optional MarginInnerProductParameter margin_inner_product_param = 232;
+  optional HDF5BboxDataParameter hdf5_bbox_data_param = 233;
+  optional AnchorsParameter anchors_param = 234;
+  optional MySmoothL1LossParameter my_smooth_L1_loss_param = 235;
+  optional OnlineHardMineParameter online_hard_mine_param = 236;
+  optional OnlineRandomMineParameter online_random_mine_param = 237;
+  optional ProposalRCNNTrainParameter proposal_rcnn_train_param = 238;
+  optional ProposalRCNNTestParameter proposal_rcnn_test_param = 239;
+  optional ImageMixHDF5DataParameter image_mix_hdf5_data_param = 240;
+  optional FDAnchorsParameter fd_anchors_param = 241;
+  optional RoiAlignmentParameter roi_alignment_param = 242;
+  optional FCNImageDataParameter fcn_image_data_param = 243;
+  optional CenterProjectionParameter center_projection_param = 244;
+  optional FocalLossParameter focal_loss_param = 245;
 }
 
 // Message that stores parameters used to apply transformation
@@ -473,6 +486,8 @@ message TransformationParameter {
   optional uint32 crop_h = 8 [default = 0];
   optional uint32 crop_w = 9 [default = 0];
   optional bool center_crop = 10 [default = false];
+  optional bool color_distort = 11 [default = false];
+  optional bool scaled_resize = 12 [default = false];
 }
 
 // Message that stores parameters shared by loss layers
@@ -834,6 +849,14 @@ message HDF5DataParameter {
   optional bool shuffle = 3 [default = false];
 }
 
+// Message that stores parameters used by HDF5BboxDataLayer
+message HDF5BboxDataParameter {
+  // Specify the data source.
+  optional string source = 1;
+  // Specify the batch size.
+  optional uint32 batch_size = 2;
+}
+
 message HDF5OutputParameter {
   optional string file_name = 1;
 }
@@ -890,6 +913,27 @@ message ImageDataParameter {
   optional uint32 balance_by = 23 [default = 0];
   optional uint32 label_cut_start = 24 [default = 0];
   optional uint32 label_cut_end = 25 [default = 0];
+}
+
+message ImageMixHDF5DataParameter {
+  // Specify the data source.
+  optional string root_folder = 1 [default = ""];
+  optional string img_source = 2;
+  optional string bbox_source = 3;
+  // Specify the batch size.
+  optional uint32 batch_size = 4 [default = 1];
+  // The rand_skip variable is for the data layer to skip a few data points
+  // to avoid all asynchronous sgd clients to start at the same point. The skip
+  // point would be set as rand_skip * rand(0,1). Note that rand_skip should not
+  // be larger than the number of keys in the database.
+  optional uint32 rand_skip = 5 [default = 0];
+  // Whether or not ImageLayer should shuffle the list of files at every epoch.
+  optional bool shuffle = 6 [default = false];
+  // It will also resize images if new_height or new_width are not zero.
+  optional uint32 new_height = 7 [default = 0];
+  optional uint32 new_width = 8 [default = 0];
+  // Specify if the images are color or gray
+  optional bool is_color = 9 [default = true]; 
 }
 
 message InfogainLossParameter {
@@ -1719,6 +1763,8 @@ message FlipParameter {
 message NormalizeParameter {
   optional string normalize_type = 1 [default = "L2"];
   optional bool rescale = 2 [default = false];
+  // norm_clip_thres only affect when rescale = true.
+  optional float norm_clip_thres = 3 [default = 30.0];
 }
 
 message GeneralContrastiveParameter {
@@ -1786,11 +1832,30 @@ message ProposalParameter {
   optional float nms_thresh = 8 [default = 0.7];
 }
 
-message PSROIPoolingParameter {
-   required float spatial_scale = 1; 
-   required int32 output_dim = 2; // output channel number
-   required int32 group_size = 3; // number of groups to encode position-sensitive score maps
- }
+// Message that stores parameters used by AnchorsLayer
+message AnchorsParameter {
+  optional uint32 anchor_stride = 1 [default = 16];
+  optional uint32 base_size = 2 [default = 16];
+  repeated float ratio = 3;
+  repeated float scale = 4;
+  optional float nms_upper_thresh = 5 [default = 0.7];
+  optional float nms_lower_thresh = 6 [default = 0.3];
+}
+
+message FDAnchorsParameter {
+  optional uint32 anchor_stride = 1 [default = 4];
+  optional uint32 anchor_size = 2 [default = 16];
+  repeated float scale = 3;
+  optional float nms_upper_thresh = 4 [default = 0.35];
+  optional float nms_lower_thresh = 5 [default = 0.1];
+  repeated float ratio = 6;
+}
+
+//message PSROIPoolingParameter {
+//   required float spatial_scale = 1; 
+//   required int32 output_dim = 2; // output channel number
+//   required int32 group_size = 3; // number of groups to encode position-sensitive score maps
+// }
 
 message PairwiseParameter {
   enum PairwiseOp {
@@ -1804,8 +1869,11 @@ message PairwiseParameter {
   repeated float coeff = 2; // blob-wise coefficient for SUM operation
  }
 
- message SmoothL1Parameter {
-  optional float turn_point = 1 [default = 1];
+message SmoothL1LossParameter {
+  // SmoothL1Loss(x) =
+  //   0.5 * (sigma * x) ** 2    -- if x < 1.0 / sigma / sigma
+  //   |x| - 0.5 / sigma / sigma -- otherwise
+  optional float sigma = 1 [default = 1];
 }
 
 message PermuteParameter {
@@ -1920,4 +1988,86 @@ message DenseBlockParameter {
   optional bool BC_ultra_space_efficient = 19 [default = false];
   optional int32 workspace_MB = 20 [default = 8];
   optional float moving_average_fraction = 21 [default = 0.1];
+}
+
+message MySmoothL1LossParameter {
+  // SmoothL1Loss(x) =
+  //   0.5 * (sigma * x) ** 2    -- if x < 1.0 / sigma / sigma
+  //   |x| - 0.5 / sigma / sigma -- otherwise
+  optional float sigma = 1 [default = 1];
+}
+
+message OnlineHardMineParameter {
+  optional float resample_ratio = 1 [default = 0.01];
+}
+
+message ProposalRCNNTrainParameter
+{
+  optional uint32 feat_stride = 1 [default = 16];
+  optional uint32 base_size = 2 [default = 16];
+  optional uint32 min_size = 3 [default = 16];
+  repeated float ratio = 4;
+  repeated float scale = 5;
+  optional uint32 pre_nms_topn = 6 [default = 6000];
+  optional uint32 post_nms_topn = 7 [default = 300];
+  optional float nms_thresh = 8 [default = 0.7];
+  // number of classes including the background label
+  optional uint32 num_classes = 9 [default = 2];
+}
+
+message ProposalRCNNTestParameter
+{
+  optional uint32 feat_stride = 1 [default = 16];
+  optional uint32 base_size = 2 [default = 16];
+  optional uint32 min_size = 3 [default = 16];
+  repeated float ratio = 4;
+  repeated float scale = 5;
+  optional uint32 pre_nms_topn = 6 [default = 6000];
+  optional uint32 post_nms_topn = 7 [default = 300];
+  optional float nms_thresh = 8 [default = 0.7];
+}
+message OnlineRandomMineParameter
+{
+	// the batch size is 
+	optional uint32 sample_size = 1 [default = 128];
+}
+
+message RoiAlignmentParameter
+{
+	// Pad, kernel size, and stride are all given as a single value for equal
+  // dimensions in height and width or as Y, X pairs.
+  optional uint32 pooled_h = 1 [default = 0]; // The pooled output height
+  optional uint32 pooled_w = 2 [default = 0]; // The pooled output width
+  // Multiplicative spatial scale factor to translate ROI coords from their
+  // input scale to the scale used when pooling
+  optional float spatial_scale = 3 [default = 1];
+}
+
+message FCNImageDataParameter
+{
+  optional uint32 classification_nums = 1;
+}
+
+message CenterProjectionParameter {
+  optional uint32 num_output = 1; // The number of outputs for the layer
+  optional bool bias_term = 2 [default = true]; // whether to have bias terms
+  optional FillerParameter weight_filler = 3; // The filler for the weight
+  optional FillerParameter bias_filler = 4; // The filler for the bias
+
+  // The first axis to be lumped into a single inner product computation;
+  // all preceding axes are retained in the output.
+  // May be negative to index from the end (e.g., -1 for the last axis).
+  optional int32 axis = 5 [default = 1];
+  // Specify whether to transpose the weight matrix or not.
+  // If transpose == true, any operations will be performed on the transpose
+  // of the weight matrix. The weight matrix itself is not going to be transposed
+  // but rather the transfer flag of operations will be toggled accordingly.
+  optional bool transpose = 6 [default = false];
+
+  optional float scale = 7 [default = 1.0];
+}
+
+message FocalLossParameter {
+  optional float alpha = 1 [default = 0.25]; // The scale
+  optional float gamma = 2 [default = 2]; // The exponent
 }

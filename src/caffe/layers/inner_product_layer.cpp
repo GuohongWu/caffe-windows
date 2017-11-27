@@ -119,6 +119,20 @@ void InnerProductLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
   caffe_cpu_gemm<Dtype>(CblasNoTrans, transpose_ ? CblasNoTrans : CblasTrans,
       M_, N_, K_, (Dtype)1.,
       bottom_data, weight, (Dtype)0., top_data);
+
+  if (bottom.size() == 3 && !bias_term_) {
+	  int N_out = top[0]->shape(0);
+	  CHECK_EQ(N_out, bottom[2]->shape(0)) << "the N of bottom[2] must be equal to N_out.";
+	  CHECK_EQ(1, bottom[2]->count(1)) << "Shape of bottom[2] must be N*1*1*1.";
+
+	  top_data = top[0]->mutable_cpu_data();
+	  const Dtype* label_data = bottom[2]->cpu_data();
+	  for (int i = 0; i < N_out; ++i) {
+		  const int label_value = static_cast<int>(label_data[i]);
+		  top_data[i * N_ + label_value] = Dtype(0.5f) * Dtype(powf(top_data[i * N_ + label_value] + Dtype(1.0f), 2)) - Dtype(1.0); // 0.5 * (x + 1)^2 - 1
+	  }
+  }
+
   if (bias_term_) {
     caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, M_, N_, 1, (Dtype)1.,
         bias_multiplier_.cpu_data(),
@@ -131,11 +145,28 @@ void InnerProductLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
     const vector<bool>& propagate_down,
     const vector<Blob<Dtype>*>& bottom) {
   const Dtype* weight = bottom.size() >= 2 ? bottom[1]->cpu_data() : this->blobs_[0]->cpu_data();
+  Blob<Dtype> top_diff_inter;
+
   if ((bottom.size() == 1 && this->param_propagate_down_[0])||
     (bottom.size() >= 2 && propagate_down[1])){
     const Dtype* top_diff = top[0]->cpu_diff();
     const Dtype* bottom_data = bottom[0]->cpu_data();
     Dtype* weight_diff = bottom.size() >= 2 ? bottom[1]->mutable_cpu_diff() : this->blobs_[0]->mutable_cpu_diff();
+
+	if (bottom.size() == 3 && !bias_term_) {		
+		top_diff_inter.ReshapeLike(*top[0]);
+		Dtype* top_diff_inter_data = top_diff_inter.mutable_cpu_data();
+
+		const Dtype* top_data = top[0]->cpu_data();
+		int N_out = top_diff_inter.shape(0);
+		const Dtype* label_data = bottom[2]->cpu_data();
+		for (int i = 0; i < N_out; ++i) {
+			const int label_value = static_cast<int>(label_data[i]);
+			top_diff_inter_data[i * N_ + label_value] *= Dtype(sqrtf(2 * (1 + top_data[i * N_ + label_value])));
+		}
+		top_diff = top_diff_inter.cpu_data();
+	}
+
     // Gradient with respect to weight
     if (transpose_) {
       caffe_cpu_gemm<Dtype>(CblasTrans, CblasNoTrans,
@@ -159,6 +190,10 @@ void InnerProductLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
   }
   if (propagate_down[0]) {
     const Dtype* top_diff = top[0]->cpu_diff();
+
+	if (bottom.size() == 3 && !bias_term_)
+		top_diff = top_diff_inter.cpu_data();
+
     // Gradient with respect to bottom data
     if (transpose_) {
       caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasTrans,

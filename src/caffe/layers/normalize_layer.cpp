@@ -17,6 +17,9 @@ void NormalizeLayer<Dtype>::LayerSetUp(
     this->layer_param_.normalize_param().normalize_type();
   rescale_ =
     this->layer_param_.normalize_param().rescale();
+
+  if (rescale_)
+	  norm_clip_thres_ = this->layer_param_.normalize_param().norm_clip_thres();
 }
 
 template <typename Dtype>
@@ -57,7 +60,14 @@ void NormalizeLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
         norm_data[n*spatial_dim + s] += 1e-6;
         norm_data[n*spatial_dim + s] = Dtype(1) / sqrt(norm_data[n*spatial_dim + s]);
         for (int c = 0; c < channels; c++) {
-          top_data[(n * channels + c) * spatial_dim + s] = bottom_data[(n * channels + c) * spatial_dim + s] * norm_data[n*spatial_dim + s];
+			if (rescale_) {
+				if (norm_data[n*spatial_dim + s] * norm_clip_thres_ >= 1.0)
+					top_data[(n * channels + c) * spatial_dim + s] = bottom_data[(n * channels + c) * spatial_dim + s];
+				else
+					top_data[(n * channels + c) * spatial_dim + s] = bottom_data[(n * channels + c) * spatial_dim + s] * norm_data[n*spatial_dim + s] * norm_clip_thres_;
+			}
+			else
+				top_data[(n * channels + c) * spatial_dim + s] = bottom_data[(n * channels + c) * spatial_dim + s] * norm_data[n*spatial_dim + s];
         }
       }
     }
@@ -73,7 +83,14 @@ void NormalizeLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
         norm_data[n*spatial_dim + s] += 1e-6;
         norm_data[n*spatial_dim + s] = Dtype(1) / norm_data[n*spatial_dim + s];
         for (int c = 0; c < channels; c++) {
-          top_data[(n * channels + c) * spatial_dim + s] = bottom_data[(n * channels + c) * spatial_dim + s] * norm_data[n*spatial_dim + s];
+			if (rescale_) {
+				if (norm_data[n*spatial_dim + s] * norm_clip_thres_ >= Dtype(1.0f))
+					top_data[(n * channels + c) * spatial_dim + s] = bottom_data[(n * channels + c) * spatial_dim + s];
+				else
+					top_data[(n * channels + c) * spatial_dim + s] = bottom_data[(n * channels + c) * spatial_dim + s] * norm_data[n*spatial_dim + s] * norm_clip_thres_;
+			}
+			else
+				top_data[(n * channels + c) * spatial_dim + s] = bottom_data[(n * channels + c) * spatial_dim + s] * norm_data[n*spatial_dim + s];
         }
       }
     }
@@ -101,8 +118,19 @@ void NormalizeLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
       for (int s = 0; s < spatial_dim; s++) {
         Dtype a = caffe_cpu_strided_dot(channels, top_data + n*channels*spatial_dim + s, spatial_dim, top_diff + n*channels*spatial_dim + s, spatial_dim);
         for (int c = 0; c < channels; c++) {
-          bottom_diff[(n * channels + c) * spatial_dim + s] = 
-            (top_diff[(n * channels + c) * spatial_dim + s] - top_data[(n * channels + c) * spatial_dim + s] * a) * norm_data[n*spatial_dim + s];
+			if (rescale_) {
+				if (norm_data[n*spatial_dim + s] * norm_clip_thres_ >= Dtype(1.0)) {
+					bottom_diff[(n * channels + c) * spatial_dim + s] = top_diff[(n * channels + c) * spatial_dim + s];
+				}
+				else {
+					bottom_diff[(n * channels + c) * spatial_dim + s] =
+						(norm_clip_thres_ * top_diff[(n * channels + c) * spatial_dim + s] - top_data[(n * channels + c) * spatial_dim + s] / norm_clip_thres_ * a) * norm_data[n*spatial_dim + s];
+				}
+			}
+			else {
+				bottom_diff[(n * channels + c) * spatial_dim + s] =
+					(top_diff[(n * channels + c) * spatial_dim + s] - top_data[(n * channels + c) * spatial_dim + s] * a) * norm_data[n*spatial_dim + s];
+			}        
         }
       }
     }

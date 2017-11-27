@@ -42,12 +42,15 @@ class BaseDataLayer : public Layer<Dtype> {
   shared_ptr<DataTransformer<Dtype> > data_transformer_;
   bool output_labels_;
   bool output_weights_;
+  bool output_segMask_;
+  bool output_poseKeypoints_;
 };
 
 template <typename Dtype>
 class Batch {
  public:
   Blob<Dtype> data_, label_, weight_;
+  Blob<Dtype> segMask_, poseKeypoints_;  // for mask_RCNN
 };
 
 template <typename Dtype>
@@ -76,6 +79,7 @@ class BasePrefetchingDataLayer :
   Batch<Dtype>* prefetch_current_;
 
   Blob<Dtype> transformed_data_;
+  Blob<Dtype> transformed_segMask_;
 };
 
 }  // namespace caffe
