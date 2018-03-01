@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "caffe/blob.hpp"
+#include "caffe/data_reader.hpp"
 #include "caffe/data_transformer.hpp"
 #include "caffe/internal_thread.hpp"
 #include "caffe/layer.hpp"
@@ -29,7 +30,8 @@ class DataLayer : public BasePrefetchingDataLayer<Dtype> {
   void Next();
   bool Skip();
   virtual void load_batch(Batch<Dtype>* batch);
-
+  
+  DataReader reader_;
   shared_ptr<db::DB> db_;
   shared_ptr<db::Cursor> cursor_;
   uint64_t offset_;

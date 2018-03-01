@@ -2,7 +2,6 @@
 #include <utility>
 #include <vector>
 #include <queue>
-#include <omp.h>
 
 #include "caffe/layers/online_hard_mine_layer.hpp"
 #include "caffe/util/math_functions.hpp"
@@ -13,11 +12,12 @@ namespace caffe
 	template <typename Dtype>
 	void OnlineHardMineLayer<Dtype>::LayerSetUp(
 		const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
-			bool b = this->layer_param_.online_hard_mine_param().has_resample_ratio();
-			if(!b)
-				top_ratio_ = Dtype(0.01);
-			else
-				top_ratio_ = this->layer_param_.online_hard_mine_param().resample_ratio();
+			top_ratio_ = this->layer_param_.online_hard_mine_param().resample_ratio();
+			// set a post ratio here for on-line hard mining layer
+			post_ratio_ = this->layer_param_.online_hard_mine_param().post_n_ratio();
+			
+			CHECK_LT(post_ratio_,1)<<"the post ratio can not be greater than 1!";
+			CHECK_GE(post_ratio_,0)<<"the post ratio can not be less than 0!";
 	}
 
 	template <typename Dtype>
@@ -56,23 +56,36 @@ namespace caffe
 			// first step, find the top k minimum threshold in the cpu data
 			const Dtype* bottom0_cpu = bottom[0]->cpu_data();
 			const Dtype* bottom1_cpu = bottom[1]->cpu_data();
+
+			//top[0]->ReshapeLike(*bottom[1]);
 			// first copy the data from bottom 1 blob
 			top[0]->CopyFrom(*bottom[1]);
 			Dtype* top0_cpu = top[0]->mutable_cpu_data();
-			// use priority heap to get the first k minimum background training examples
-			// use openmp to accerelate the process per-batch
-			#pragma omp parallel for
+			//CHECK_EQ(top[0]->height(), bottom[1]->height());
+			//CHECK_EQ(top[0]->width(), bottom[1]->width());
+			//CHECK_EQ(top[0]->channels(), bottom[1]->channels());
+			//CHECK_EQ(top[0]->num(), bottom[1]->num());
+
+			//// use priority heap to get the first k minimum background training examples
+			//// use openmp to accerelate the process per-batch
+			////#pragma omp parallel for
 			for(int i = 0;i < batchnum;++i)
 			{
+				// time : O(nlog(k))
+				//std::priority_queue<std::pair<Dtype, int>,std::vector<std::pair<Dtype, int>>,cmp<Dtype>> q;
 				std::priority_queue<std::pair<Dtype, int> > q;
 				int k = std::floor(top_ratio_ * width_height_);
 				if(k == 0)
 					continue;
+				
+				// set ignore post number
+				int post_num = std::floor(k * post_ratio_);
+				
+
 				for(int j = 0;j < width_height_;++j)
 				{
 					int pos1 = i*width_height_ + j;
-					//if(bottom1_cpu[pos1] < Dtype(0.1))
-					if(bottom1_cpu[pos1] == 0)
+					if(bottom1_cpu[pos1] < Dtype(0.1))
 					{
 						if(q.size() < k)
 							q.push(std::pair<Dtype,int>(bottom0_cpu[i*inlier_num_ + j],j));
@@ -87,9 +100,22 @@ namespace caffe
 				for(int j = 0;j < k;++j)
 				{
 					int ki = q.top().second;
-					top0_cpu[i*width_height_ + ki] = Dtype(0);
+					if(j > post_num)
+						top0_cpu[i*width_height_ + ki] = Dtype(0);
 					q.pop();
 				}
+
+				// set a priority queue to get the minimum samples and write it into the top region
+				// if all are positive training examples, then we will use 
+				//for(int j = 0;j < width_height_;++j)
+				//{
+				//	int pos1 = i*width_height_ + j;
+				//	if(bottom1_cpu[pos1] < Dtype(0.1))
+				//	{
+				//		//q.push(std::pair<Dtype,int>(bottom0_cpu[i*inlier_num_ + j],j));
+				//		top0_cpu[0] = Dtype(-1);
+				//	}
+				//}
 			}
 	}
 #ifdef CPU_ONLY

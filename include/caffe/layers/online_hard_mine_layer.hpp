@@ -52,6 +52,7 @@ class OnlineHardMineLayer : public Layer<Dtype> {
   }
   // grasp the top N samples
   Dtype top_ratio_;
+  Dtype post_ratio_;
   // the total number of samples
   //int outer_num_;
   // the inlier number

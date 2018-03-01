@@ -91,6 +91,8 @@
   <ItemGroup>
     <ClCompile Include="..\..\src\caffe\blob.cpp" />
     <ClCompile Include="..\..\src\caffe\common.cpp" />
+    <ClCompile Include="..\..\src\caffe\cpm_data_transformer.cpp" />
+    <ClCompile Include="..\..\src\caffe\data_reader.cpp" />
     <ClCompile Include="..\..\src\caffe\data_transformer.cpp" />
     <ClCompile Include="..\..\src\caffe\internal_thread.cpp" />
     <ClCompile Include="..\..\src\caffe\layer.cpp" />
@@ -110,8 +112,10 @@
     <ClCompile Include="..\..\src\caffe\layers\center_projection_layer.cpp" />
     <ClCompile Include="..\..\src\caffe\layers\concat_layer.cpp" />
     <ClCompile Include="..\..\src\caffe\layers\contrastive_loss_layer.cpp" />
+    <ClCompile Include="..\..\src\caffe\layers\conv_depthwise_layer.cpp" />
     <ClCompile Include="..\..\src\caffe\layers\conv_layer.cpp" />
     <ClCompile Include="..\..\src\caffe\layers\correlation_loss_layer.cpp" />
+    <ClCompile Include="..\..\src\caffe\layers\cpm_data_layer.cpp" />
     <ClCompile Include="..\..\src\caffe\layers\crop_layer.cpp" />
     <ClCompile Include="..\..\src\caffe\layers\cudnn_bn_layer.cpp" />
     <ClCompile Include="..\..\src\caffe\layers\cudnn_conv_layer.cpp" />
@@ -145,6 +149,7 @@
     <ClCompile Include="..\..\src\caffe\layers\general_constrastive_loss_layer.cpp" />
     <ClCompile Include="..\..\src\caffe\layers\general_triplet_loss_layer.cpp" />
     <ClCompile Include="..\..\src\caffe\layers\gram_layer.cpp" />
+    <ClCompile Include="..\..\src\caffe\layers\gram_mat_layer.cpp" />
     <ClCompile Include="..\..\src\caffe\layers\hdf5_data_layer.cpp" />
     <ClCompile Include="..\..\src\caffe\layers\hdf5_bbox_data_layer.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
@@ -169,6 +174,9 @@
     <ClCompile Include="..\..\src\caffe\layers\lstm_layer.cpp" />
     <ClCompile Include="..\..\src\caffe\layers\lstm_unit_layer.cpp" />
     <ClCompile Include="..\..\src\caffe\layers\margin_inner_product_layer.cpp" />
+    <ClCompile Include="..\..\src\caffe\layers\mean_variance_layer.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\..\src\caffe\layers\memory_data_layer.cpp" />
     <ClCompile Include="..\..\src\caffe\layers\multinomial_logistic_loss_layer.cpp" />
     <ClCompile Include="..\..\src\caffe\layers\multi_label_image_data_layer.cpp" />
@@ -179,6 +187,7 @@
     <ClCompile Include="..\..\src\caffe\layers\noise_layer.cpp" />
     <ClCompile Include="..\..\src\caffe\layers\normalize_layer.cpp" />
     <ClCompile Include="..\..\src\caffe\layers\online_hard_mine_layer.cpp" />
+    <ClCompile Include="..\..\src\caffe\layers\online_hard_mine_layer_v2.cpp" />
     <ClCompile Include="..\..\src\caffe\layers\online_random_mine_layer.cpp" />
     <ClCompile Include="..\..\src\caffe\layers\pairwise_layer.cpp" />
     <ClCompile Include="..\..\src\caffe\layers\parameter_layer.cpp" />
@@ -201,11 +210,13 @@
     <ClCompile Include="..\..\src\caffe\layers\roi_alignment_layer.cpp" />
     <ClCompile Include="..\..\src\caffe\layers\roi_pooling_layer.cpp" />
     <ClCompile Include="..\..\src\caffe\layers\scale_layer.cpp" />
+    <ClCompile Include="..\..\src\caffe\layers\shuffle_channel_layer.cpp" />
     <ClCompile Include="..\..\src\caffe\layers\sigmoid_cross_entropy_loss_layer.cpp" />
     <ClCompile Include="..\..\src\caffe\layers\sigmoid_layer.cpp" />
     <ClCompile Include="..\..\src\caffe\layers\silence_layer.cpp" />
     <ClCompile Include="..\..\src\caffe\layers\slice_layer.cpp" />
     <ClCompile Include="..\..\src\caffe\layers\smooth_L1_loss_layer.cpp" />
+    <ClCompile Include="..\..\src\caffe\layers\softmax_focal_loss_layer.cpp" />
     <ClCompile Include="..\..\src\caffe\layers\softmax_layer.cpp" />
     <ClCompile Include="..\..\src\caffe\layers\softmax_loss_layer.cpp" />
     <ClCompile Include="..\..\src\caffe\layers\soft_contrastive_loss_layer.cpp" />
@@ -219,6 +230,7 @@
     <ClCompile Include="..\..\src\caffe\layers\transformer_layer.cpp" />
     <ClCompile Include="..\..\src\caffe\layers\triplet_loss_layer.cpp" />
     <ClCompile Include="..\..\src\caffe\layers\truncation_layer.cpp" />
+    <ClCompile Include="..\..\src\caffe\layers\tv_loss_layer.cpp" />
     <ClCompile Include="..\..\src\caffe\layers\window_data_layer.cpp" />
     <ClCompile Include="..\..\src\caffe\layer_factory.cpp" />
     <ClCompile Include="..\..\src\caffe\net.cpp" />
@@ -253,7 +265,9 @@
     <ClInclude Include="..\..\include\caffe\blob.hpp" />
     <ClInclude Include="..\..\include\caffe\caffe.hpp" />
     <ClInclude Include="..\..\include\caffe\common.hpp" />
+    <ClInclude Include="..\..\include\caffe\cpm_data_transformer.hpp" />
     <ClInclude Include="..\..\include\caffe\custom_layers.hpp" />
+    <ClInclude Include="..\..\include\caffe\data_reader.hpp" />
     <ClInclude Include="..\..\include\caffe\data_transformer.hpp" />
     <ClInclude Include="..\..\include\caffe\filler.hpp" />
     <ClInclude Include="..\..\include\caffe\internal_thread.hpp" />
@@ -274,7 +288,9 @@
     <ClInclude Include="..\..\include\caffe\layers\center_projection_layer.hpp" />
     <ClInclude Include="..\..\include\caffe\layers\concat_layer.hpp" />
     <ClInclude Include="..\..\include\caffe\layers\contrastive_loss_layer.hpp" />
+    <ClInclude Include="..\..\include\caffe\layers\conv_depthwise_layer.hpp" />
     <ClInclude Include="..\..\include\caffe\layers\conv_layer.hpp" />
+    <ClInclude Include="..\..\include\caffe\layers\cpm_data_layer.hpp" />
     <ClInclude Include="..\..\include\caffe\layers\crop_layer.hpp" />
     <ClInclude Include="..\..\include\caffe\layers\cudnn_bn_layer.hpp" />
     <ClInclude Include="..\..\include\caffe\layers\cudnn_conv_layer.hpp" />
@@ -303,6 +319,7 @@
     <ClInclude Include="..\..\include\caffe\layers\flatten_layer.hpp" />
     <ClInclude Include="..\..\include\caffe\layers\flip_layer.hpp" />
     <ClInclude Include="..\..\include\caffe\layers\focal_loss_layer.hpp" />
+    <ClInclude Include="..\..\include\caffe\layers\gram_mat_layer.hpp" />
     <ClInclude Include="..\..\include\caffe\layers\hdf5_data_layer.hpp" />
     <ClInclude Include="..\..\include\caffe\layers\hdf5_bbox_data_layer.hpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
@@ -322,6 +339,9 @@
     <ClInclude Include="..\..\include\caffe\layers\loss_layer.hpp" />
     <ClInclude Include="..\..\include\caffe\layers\lrn_layer.hpp" />
     <ClInclude Include="..\..\include\caffe\layers\margin_inner_product_layer.hpp" />
+    <ClInclude Include="..\..\include\caffe\layers\mean_variance_layer.hpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="..\..\include\caffe\layers\memory_data_layer.hpp" />
     <ClInclude Include="..\..\include\caffe\layers\multinomial_logistic_loss_layer.hpp" />
     <ClInclude Include="..\..\include\caffe\layers\mvn_layer.hpp" />
@@ -329,6 +349,7 @@
     <ClInclude Include="..\..\include\caffe\layers\neuron_layer.hpp" />
     <ClInclude Include="..\..\include\caffe\layers\normalize_layer.hpp" />
     <ClInclude Include="..\..\include\caffe\layers\online_hard_mine_layer.hpp" />
+    <ClInclude Include="..\..\include\caffe\layers\online_hard_mine_layer_v2.hpp" />
     <ClInclude Include="..\..\include\caffe\layers\online_random_mine_layer.hpp" />
     <ClInclude Include="..\..\include\caffe\layers\parameter_layer.hpp" />
     <ClInclude Include="..\..\include\caffe\layers\permute_layer.hpp" />
@@ -349,10 +370,12 @@
     <ClInclude Include="..\..\include\caffe\layers\resize_layer.hpp" />
     <ClInclude Include="..\..\include\caffe\layers\roi_alignment_layer.hpp" />
     <ClInclude Include="..\..\include\caffe\layers\scale_layer.hpp" />
+    <ClInclude Include="..\..\include\caffe\layers\shuffle_channel_layer.hpp" />
     <ClInclude Include="..\..\include\caffe\layers\sigmoid_cross_entropy_loss_layer.hpp" />
     <ClInclude Include="..\..\include\caffe\layers\sigmoid_layer.hpp" />
     <ClInclude Include="..\..\include\caffe\layers\silence_layer.hpp" />
     <ClInclude Include="..\..\include\caffe\layers\slice_layer.hpp" />
+    <ClInclude Include="..\..\include\caffe\layers\softmax_focal_loss_layer.hpp" />
     <ClInclude Include="..\..\include\caffe\layers\softmax_layer.hpp" />
     <ClInclude Include="..\..\include\caffe\layers\softmax_loss_layer.hpp" />
     <ClInclude Include="..\..\include\caffe\layers\soft_contrastive_loss_layer.hpp" />
@@ -362,6 +385,7 @@
     <ClInclude Include="..\..\include\caffe\layers\tanh_layer.hpp" />
     <ClInclude Include="..\..\include\caffe\layers\threshold_layer.hpp" />
     <ClInclude Include="..\..\include\caffe\layers\tile_layer.hpp" />
+    <ClInclude Include="..\..\include\caffe\layers\tv_loss_layer.hpp" />
     <ClInclude Include="..\..\include\caffe\layers\wider_face_data_layer.hpp" />
     <ClInclude Include="..\..\include\caffe\layers\window_data_layer.hpp" />
     <ClInclude Include="..\..\include\caffe\layer_factory.hpp" />
@@ -457,6 +481,7 @@
     <CudaCompile Include="..\..\src\caffe\layers\bn_layer.cu" />
     <CudaCompile Include="..\..\src\caffe\layers\center_loss_layer.cu" />
     <CudaCompile Include="..\..\src\caffe\layers\center_projection_layer.cu" />
+    <CudaCompile Include="..\..\src\caffe\layers\conv_depthwise_layer.cu" />
     <CudaCompile Include="..\..\src\caffe\layers\correlation_loss_layer.cu" />
     <CudaCompile Include="..\..\src\caffe\layers\cudnn_bn_layer.cu" />
     <CudaCompile Include="..\..\src\caffe\layers\DenseBlock_layer.cu" />
@@ -464,6 +489,7 @@
     <CudaCompile Include="..\..\src\caffe\layers\flip_layer.cu" />
     <CudaCompile Include="..\..\src\caffe\layers\focal_loss_layer.cu" />
     <CudaCompile Include="..\..\src\caffe\layers\gram_layer.cu" />
+    <CudaCompile Include="..\..\src\caffe\layers\gram_mat_layer.cu" />
     <CudaCompile Include="..\..\src\caffe\layers\hdf5_bbox_data_layer.cu" />
     <CudaCompile Include="..\..\src\caffe\layers\hotspot_layer.cu" />
     <CudaCompile Include="..\..\src\caffe\layers\image_mix_hdf5_data_layer.cu">
@@ -476,6 +502,9 @@
     <CudaCompile Include="..\..\src\caffe\layers\local_layer.cu" />
     <CudaCompile Include="..\..\src\caffe\layers\lstm_unit_layer.cu" />
     <CudaCompile Include="..\..\src\caffe\layers\margin_inner_product_layer.cu" />
+    <CudaCompile Include="..\..\src\caffe\layers\mean_variance_layer.cu">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </CudaCompile>
     <CudaCompile Include="..\..\src\caffe\layers\my_smooth_L1_loss_layer.cu" />
     <CudaCompile Include="..\..\src\caffe\layers\noise_layer.cu" />
     <CudaCompile Include="..\..\src\caffe\layers\normalize_layer.cu" />
@@ -491,12 +520,15 @@
     <CudaCompile Include="..\..\src\caffe\layers\resize_layer.cu" />
     <CudaCompile Include="..\..\src\caffe\layers\roi_alignment_layer.cu" />
     <CudaCompile Include="..\..\src\caffe\layers\roi_pooling_layer.cu" />
+    <CudaCompile Include="..\..\src\caffe\layers\shuffle_channel_layer.cu" />
     <CudaCompile Include="..\..\src\caffe\layers\smooth_L1_loss_layer.cu" />
+    <CudaCompile Include="..\..\src\caffe\layers\softmax_focal_loss_layer.cu" />
     <CudaCompile Include="..\..\src\caffe\layers\soft_truncation_layer.cu" />
     <CudaCompile Include="..\..\src\caffe\layers\subregion_layer.cu" />
     <CudaCompile Include="..\..\src\caffe\layers\transformer_layer.cu" />
     <CudaCompile Include="..\..\src\caffe\layers\triplet_loss_layer.cu" />
     <CudaCompile Include="..\..\src\caffe\layers\truncation_layer.cu" />
+    <CudaCompile Include="..\..\src\caffe\layers\tv_loss_layer.cu" />
     <CudaCompile Include="..\..\src\caffe\util\nms.cu" />
     <CudaCompile Include="..\..\src\caffe\util\util_img.cu" />
   </ItemGroup>

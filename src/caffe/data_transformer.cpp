@@ -316,9 +316,39 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
 		}
 	}
 
+	// add a random-color mask square in image
+	int mask_size_min = param_.mask_size_min();
+	int mask_size_max = param_.mask_size_max();
+	CHECK_GE(mask_size_max, mask_size_min);
+	CHECK_GE(std::min(img_height, img_width), mask_size_max);
+	const bool do_mask = (mask_size_min || mask_size_max) && !Rand(4);
+	cv::Mat cv_masked_img;
+	if (do_mask) {
+		cv_masked_img = cv_img.clone();
+		cv::RNG uni_rng(time(0));
+		int crop_size_ = uni_rng.uniform(mask_size_min, mask_size_max + 1);
+		int tl_pos_x_ = uni_rng.uniform(0, img_width - crop_size_ + 1);
+		int tl_pos_y_ = uni_rng.uniform(0, img_height - crop_size_ + 1);
+		cv::Mat masked_reg(cv_masked_img, cv::Rect(tl_pos_x_, tl_pos_y_, crop_size_, crop_size_));
+		vector<uchar> random_pix_color(img_channels);
+		for(int i = 0;i < img_channels;++i)
+			random_pix_color[i] = uni_rng.uniform(0,256);
+		for (int row_ = 0; row_ < masked_reg.rows; ++row_) {
+			uchar* ptr = masked_reg.ptr<uchar>(row_);
+			int img_index = 0;
+			for (int col_ = 0; col_ < masked_reg.cols; ++col_) {
+				for (int c_ = 0; c_ < img_channels; ++c_)
+					//ptr[img_index++] = uni_rng.uniform(0, 256);
+					ptr[img_index++] = random_pix_color[c_];
+			}
+		}
+	}
+	else
+		cv_masked_img = cv_img;
+
 	int h_off = 0;
 	int w_off = 0;
-	cv::Mat cv_cropped_img = cv_img;
+	cv::Mat cv_cropped_img = cv_masked_img;
 	if (crop_h || crop_w) {
 		CHECK_EQ(crop_h, height);
 		CHECK_EQ(crop_w, width);
@@ -332,7 +362,7 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
 			w_off = (img_width - crop_w) / 2;
 		}
 		cv::Rect roi(w_off, h_off, crop_w, crop_h);
-		cv_cropped_img = cv_img(roi);
+		cv_cropped_img = cv_cropped_img(roi);
 	}
 	else {
 		if (transpose) {
@@ -348,7 +378,7 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
 	CHECK(cv_cropped_img.data);
 	// image color distort.
 	if (param_.color_distort() == true) {
-		const int distort_type = Rand(6);
+		const int distort_type = Rand(7);
 		switch (distort_type)
 		{
 		case 0:
@@ -359,24 +389,41 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
 			cv::GaussianBlur(cv_cropped_img, cv_cropped_img, cv::Size(3, 3), 1.5, 1.5); break;
 		case 4: // GaussianNoise
 		{
-			cv::Mat gauss_noise(cv_cropped_img.rows, cv_cropped_img.cols, CV_32FC3);
+			cv::Mat gauss_noise(cv_cropped_img.rows, cv_cropped_img.cols, CV_32FC(img_channels));
 			cv::randn(gauss_noise, 0, 0.0316 * 255);
 			cv::Mat cv_cropped_img_float;
-			cv_cropped_img.convertTo(cv_cropped_img_float, CV_32FC3);
+			cv_cropped_img.convertTo(cv_cropped_img_float, CV_32FC(img_channels));
 			cv_cropped_img_float += gauss_noise;
-			cv_cropped_img_float.convertTo(cv_cropped_img, CV_8UC3);
+			cv_cropped_img_float.convertTo(cv_cropped_img, CV_8UC(img_channels));
 		}   break;
-		case 5: // Brightness and Contrast
+		case 5:
+		case 6: // Brightness and Contrast
 		{
-			cv::RNG uni_rng;
-			float brightness_ = uni_rng.uniform(-0.05f, 0.05f);
-			float contrast_ = uni_rng.uniform(-0.08f, 0.08f);
+			cv::RNG uni_rng(time(0));
+			float brightness_ = uni_rng.uniform(-0.055f, 0.055f);
+			float contrast_ = uni_rng.uniform(-0.085f, 0.085f);
 			float slope_k = tan((45 + 44 * contrast_) / 180 * 3.1415926);
 			uchar look_up_tab[256];
 			for (int idx = 0; idx < 256; ++idx)
 				look_up_tab[idx] = cv::saturate_cast<uchar>((idx - 127.5 * (1 - brightness_)) * slope_k + 127.5 * (1 + brightness_));
 			cv::Mat lut_mat(1, 256, CV_8UC1, look_up_tab);
-			cv::LUT(cv_cropped_img, lut_mat, cv_cropped_img);
+
+			const int rand_channel_idx = Rand(4);
+			if(rand_channel_idx == 0) // BGR
+				cv::LUT(cv_cropped_img, lut_mat, cv_cropped_img);
+			else {
+				std::vector<cv::Mat> img_split;
+				cv::split(cv_cropped_img, img_split);
+
+				if(rand_channel_idx == 1) // B
+					cv::LUT(img_split[0], lut_mat, img_split[0]);
+				else if(rand_channel_idx == 2) // G
+					cv::LUT(img_split[1], lut_mat, img_split[1]);
+				else // R
+					cv::LUT(img_split[2], lut_mat, img_split[2]);
+
+				cv::merge(img_split, cv_cropped_img);
+			}
 		}  break;
 		default:   LOG(ERROR) << "Unknown Color_distort type!"; break;
 		}
@@ -550,12 +597,51 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
 	  }
 	  cv::Mat cv_img_crop = cv_img_mirror;
 	  cv::Mat cv_mask_img_crop = cv_mask_img_mirror;
-	  if (crop_h > 0 && crop_w > 0) {
+	  if (crop_h > 0 && crop_w > 0 && Rand(2)) {
 		  // we adaptively adjust crop_h and crop_w to fit the size of input img.
+		  crop_h = std::min(crop_h, img_height);
+		  crop_w = std::min(crop_w, img_width);
+		  int h_off = 0;
+		  int w_off = 0;
+		  if (phase_ == TRAIN && !param_.center_crop()) {
+			  h_off = Rand(img_height - crop_h + 1);
+			  w_off = Rand(img_width - crop_w + 1);
+		  }
+		  else {
+			  h_off = (img_height - crop_h) / 2;
+			  w_off = (img_width - crop_w) / 2;
+		  }
+		  cv::Rect roi(w_off, h_off, crop_w, crop_h);
+		  cv_img_crop = cv_img_crop(roi);
+		  img_height = crop_h;
+		  img_width = crop_w;
 
+		  if(cv_mask_img.data)
+			  cv_mask_img_crop = cv_mask_img_crop(roi);
+
+		  Dtype* bbox_blob_pos = bbox_blob;
+		  for (int k = 0; k < bbox_nums; ++k) {
+			  bbox_blob_pos[0] -= Dtype(w_off);
+			  bbox_blob_pos[1] -= Dtype(h_off);
+			  bbox_blob_pos[2] -= Dtype(w_off);
+			  bbox_blob_pos[3] -= Dtype(h_off);
+			  bbox_blob_pos += 5;
+		  }
+
+		  if (poseKeypoints_blob) {
+			  // all keypoints will be translated.
+			  Dtype* poseKeypoints_blob_pos = poseKeypoints_blob;
+			  for (int k = 0; k < bbox_nums; ++k) {
+				  for (int i = 0; i < 17; ++i) {
+					  poseKeypoints_blob_pos[0] -= Dtype(w_off);
+					  poseKeypoints_blob_pos[1] -= Dtype(h_off);
+					  poseKeypoints_blob_pos += 3;
+				  }
+			  }
+		  }
 	  }
 
-	  //2. image scaled resize.
+	  //3. image scaled resize.
 	  const bool do_scaled_resize = param_.scaled_resize();
 	  cv::Mat cv_img_scaled = cv_img_crop;
 	  cv::Mat cv_mask_img_scaled = cv_mask_img_crop;
@@ -588,11 +674,48 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
 		  }
 	  }
 
-	  //3. image color distort.
+	  //4. add a random-color mask square in image
+	  int mask_size_min = param_.mask_size_min();
+	  int mask_size_max = param_.mask_size_max();
+	  CHECK_GE(mask_size_max, mask_size_min);
+	  CHECK_GE(std::min(img_height, img_width), mask_size_max);
+	  const bool do_mask = (mask_size_min || mask_size_max) && !Rand(4);
+	  cv::Mat cv_masked_img = cv_img_scaled;
+	  if (do_mask) {
+		  cv::RNG uni_rng(time(0));
+		  int crop_size_ = uni_rng.uniform(mask_size_min, mask_size_max + 1);
+		  int tl_pos_x_ = uni_rng.uniform(0, img_width - crop_size_ + 1);
+		  int tl_pos_y_ = uni_rng.uniform(0, img_height - crop_size_ + 1);
+		  cv::Mat masked_reg(cv_masked_img, cv::Rect(tl_pos_x_, tl_pos_y_, crop_size_, crop_size_));
+
+		  cv::Mat mask_masked_reg;
+		  if (cv_mask_img.data)
+			  mask_masked_reg = cv::Mat(cv_mask_img_scaled, cv::Rect(tl_pos_x_, tl_pos_y_, crop_size_, crop_size_));
+
+		  vector<uchar> random_pix_color(channel_);
+		  for (int c_ = 0; c_ < channel_; ++c_)
+			  random_pix_color[c_] = uni_rng.uniform(0, 256);
+		  for (int row_ = 0; row_ < masked_reg.rows; ++row_) {
+			  uchar* ptr = masked_reg.ptr<uchar>(row_);
+			  uchar* ptr_mask;
+			  if(cv_mask_img.data)
+				ptr_mask = mask_masked_reg.ptr<uchar>(row_);
+			  int img_index = 0;
+			  for (int col_ = 0; col_ < masked_reg.cols; ++col_) {
+				  for (int c_ = 0; c_ < channel_; ++c_, ++img_index) {
+					  ptr[img_index] = random_pix_color[c_];
+					  if (cv_mask_img.data && c_ == 0)
+						  ptr_mask[img_index / channel_] = 0;
+				  }
+			  }
+		  }
+	  }
+
+	  //5. image color distort.
 	  const bool do_color_distort_ = param_.color_distort();
-	  cv::Mat cv_img_colored = cv_img_scaled;
+	  cv::Mat cv_img_colored = cv_masked_img;
 	  if (do_color_distort_ == true) {
-		  const int distort_type = Rand(6);
+		  const int distort_type = Rand(7);
 		  switch (distort_type)
 		  {
 		  case 0:
@@ -603,34 +726,51 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
 			  cv::GaussianBlur(cv_img_colored, cv_img_colored, cv::Size(3, 3), 1.5, 1.5); break;
 		  case 4: // GaussianNoise
 		  {
-			  cv::Mat gauss_noise(img_height, img_width, CV_32FC3);
+			  cv::Mat gauss_noise(img_height, img_width, CV_32FC(channel_));
 			  cv::randn(gauss_noise, 0, 0.0316 * 255);
 			  cv::Mat cv_cropped_img_float;
-			  cv_img_colored.convertTo(cv_cropped_img_float, CV_32FC3);
+			  cv_img_colored.convertTo(cv_cropped_img_float, CV_32FC(channel_));
 			  cv_cropped_img_float += gauss_noise;
-			  cv_cropped_img_float.convertTo(cv_img_colored, CV_8UC3);
+			  cv_cropped_img_float.convertTo(cv_img_colored, CV_8UC(channel_));
 		  }   break;
-		  case 5: // Brightness and Contrast
+		  case 5:
+		  case 6: // Brightness and Contrast
 		  {
-			  cv::RNG uni_rng;
-			  float brightness_ = uni_rng.uniform(-0.05f, 0.05f);
-			  float contrast_ = uni_rng.uniform(-0.08f, 0.08f);
+			  cv::RNG uni_rng(time(0));
+			  float brightness_ = uni_rng.uniform(-0.055f, 0.055f);
+			  float contrast_ = uni_rng.uniform(-0.085f, 0.085f);
 			  float slope_k = tan((45 + 44 * contrast_) / 180 * 3.1415926);
 			  uchar look_up_tab[256];
 			  for (int idx = 0; idx < 256; ++idx)
 				  look_up_tab[idx] = cv::saturate_cast<uchar>((idx - 127.5 * (1 - brightness_)) * slope_k + 127.5 * (1 + brightness_));
 			  cv::Mat lut_mat(1, 256, CV_8UC1, look_up_tab);
-			  cv::LUT(cv_img_colored, lut_mat, cv_img_colored);
+
+			  const int rand_channel_idx = Rand(4);
+			  if (rand_channel_idx == 0) // BGR
+				  cv::LUT(cv_img_colored, lut_mat, cv_img_colored);
+			  else {
+				  std::vector<cv::Mat> img_split;
+				  cv::split(cv_img_colored, img_split);
+
+				  if (rand_channel_idx == 1) // B
+					  cv::LUT(img_split[0], lut_mat, img_split[0]);
+				  else if (rand_channel_idx == 2) // G
+					  cv::LUT(img_split[1], lut_mat, img_split[1]);
+				  else // R
+					  cv::LUT(img_split[2], lut_mat, img_split[2]);
+
+				  cv::merge(img_split, cv_img_colored);
+			  }
 		  }  break;
 		  default:   LOG(ERROR) << "Unknown Color_distort type!"; break;
 		  }
 	  }
 
-	  //4. fill into size[new_width, new_height] mat.
+	  //6. fill into size[new_width, new_height] mat.
 	  cv::Mat full_img_uchar(new_height, new_width, CV_8UC(channel_));
 	  cv_img_colored.copyTo(full_img_uchar(cv::Rect(0, 0, img_width, img_height)));
 
-	  //5. finally, (imgData - mean_) * scale_
+	  //7. finally, (imgData - mean_) * scale_
 	  Dtype* transformed_data = transformed_blob->mutable_cpu_data();
 	  int top_index;
 	  for (int h = 0; h < new_height; ++h) {
@@ -911,7 +1051,8 @@ vector<int> DataTransformer<Dtype>::InferBlobShape(
 template <typename Dtype>
 void DataTransformer<Dtype>::InitRand() {
   const bool needs_rand = param_.mirror() ||
-      (phase_ == TRAIN && (param_.crop_size() || param_.crop_h() || param_.crop_w()) && !param_.center_crop()) || param_.color_distort() || param_.scaled_resize();
+      (phase_ == TRAIN && (param_.crop_size() || param_.crop_h() || param_.crop_w()) && !param_.center_crop())
+	  || param_.color_distort() || param_.scaled_resize() || (param_.mask_size_max() || param_.mask_size_min());
   if (needs_rand) {
     const unsigned int rng_seed = caffe_rng_rand();
     rng_.reset(new Caffe::RNG(rng_seed));

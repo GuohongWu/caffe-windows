@@ -155,9 +155,9 @@ namespace caffe {
 				else {
 					valid_sample = true;
 				}
-				cv::Mat cv_mask_img = ReadImageToCVMat(root_folder + "../segMaskData/" + this_line.second, false);
+				cv::Mat cv_mask_img = ReadImageToCVMat(root_folder + this_line.second, false);
 					if (!cv_mask_img.data) {
-						LOG(INFO) << "Could not load " << root_folder + "../segMaskData/" + this_line.second;
+						LOG(INFO) << "Could not load " << root_folder + this_line.second;
 						valid_sample = false;
 					}
 					else {
@@ -198,21 +198,21 @@ namespace caffe {
 	template <typename Dtype>
 	void FCNImageDataLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
 		const vector<Blob<Dtype>*>& top) {
-		if (prefetch_current_) {
-			prefetch_free_.push(prefetch_current_);
+		if (this->prefetch_current_) {
+			this->prefetch_free_.push(this->prefetch_current_);
 		}
-		prefetch_current_ = prefetch_full_.pop("Waiting for data");
-		top[0]->set_cpu_data(prefetch_current_->data_.mutable_cpu_data());
+		this->prefetch_current_ = this->prefetch_full_.pop("Waiting for data");
+		top[0]->set_cpu_data(this->prefetch_current_->data_.mutable_cpu_data());
 
 		const int class_nums = this->layer_param_.fcn_image_data_param().classification_nums();
-		Dtype* mask_data = prefetch_current_->label_.mutable_cpu_data();
-		for (int i = 0; i < prefetch_current_->label_.count(); ++i) {
+		Dtype* mask_data = this->prefetch_current_->label_.mutable_cpu_data();
+		for (int i = 0; i < this->prefetch_current_->label_.count(); ++i) {
 			if (mask_data[i] != Dtype(255) && mask_data[i] > class_nums)
 				mask_data[i] = class_nums;
 		}
 
 		CHECK_EQ(class_nums, top[1]->channels());
-		CHECK_EQ(1, prefetch_current_->label_.channels());
+		CHECK_EQ(1, this->prefetch_current_->label_.channels());
 		int nums = top[1]->num();
 		int img_size = top[1]->height() * top[1]->width();
 		Dtype* top1_data = top[1]->mutable_cpu_data();

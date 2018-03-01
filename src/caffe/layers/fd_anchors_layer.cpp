@@ -59,8 +59,8 @@ namespace caffe {
 		float base_anchor_map_H = float(img_height) / this->anchor_stride_;
 		float base_anchor_map_W = float(img_width) / this->anchor_stride_;
 		for (int s = 0; s < scale_nums; ++s) {
-			int cur_anchor_H = ceilf(base_anchor_map_H / this->scales[s]);
-			int cur_anchor_W = ceilf(base_anchor_map_W / this->scales[s]);
+			int cur_anchor_H = floorf(base_anchor_map_H / this->scales[s]);
+			int cur_anchor_W = floorf(base_anchor_map_W / this->scales[s]);
 			top[s]->Reshape(batch_size, ratio_nums, cur_anchor_H, cur_anchor_W); // label_map
 			top[s + scale_nums]->Reshape(batch_size, 4 * ratio_nums, cur_anchor_H, cur_anchor_W); // reg_map
 		}
@@ -326,6 +326,12 @@ namespace caffe {
 								*(top1_data[s] + offset_1[1]) = (tar_ceny - src_ceny) / src_h;
 								*(top1_data[s] + offset_1[2]) = std::log(tar_w / src_w);
 								*(top1_data[s] + offset_1[3]) = std::log(tar_h / src_h);
+								
+								// to debug
+								for (int i = 0; i < 4; ++i) {
+									if (isnan(*(top1_data[s] + offset_1[i])))
+										LOG(ERROR) << src_w << ' ' << src_h << ' ' << tar_w << ' ' << tar_h;
+								}
 							}
 							else
 								*(top0_data[s] + offset_0) = 0;
