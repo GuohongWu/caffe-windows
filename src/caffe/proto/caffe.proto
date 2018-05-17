@@ -428,7 +428,7 @@ message LayerParameter {
   optional CenterLossParameter center_loss_param = 211;
   optional FlipParameter flip_param = 212;
   optional InnerDistanceParameter inner_distance_param = 213;
-  optional NormalizeParameter normalize_param = 214;
+  optional NormalizeParameter norm_param = 214;
   optional GeneralContrastiveParameter general_contrastive_loss_param = 215;
   optional SoftContrastiveParameter soft_contrastive_loss_param = 216;
   optional GeneralTripletParameter general_triplet_loss_param = 217;
@@ -1767,11 +1767,22 @@ message FlipParameter {
   optional bool flip_height = 2 [default = false];
 }
 
+//message NormalizeParameter {
+//  optional string normalize_type = 1 [default = "L2"];
+//  optional bool rescale = 2 [default = false];
+//  // norm_clip_thres only affect when rescale = true.
+//  optional float norm_clip_thres = 3 [default = 30.0];
+//}
+
+// Message that stores parameters used by NormalizeLayer
 message NormalizeParameter {
-  optional string normalize_type = 1 [default = "L2"];
-  optional bool rescale = 2 [default = false];
-  // norm_clip_thres only affect when rescale = true.
-  optional float norm_clip_thres = 3 [default = 30.0];
+  optional bool across_spatial = 1 [default = true];
+  // Initial value of scale. Default is 1.0 for all
+  optional FillerParameter scale_filler = 2;
+  // Whether or not scale parameters are shared across channels.
+  optional bool channel_shared = 3 [default = true];
+  // Epsilon for not dividing by zero while normalizing variance
+  optional float eps = 4 [default = 1e-6];
 }
 
 message GeneralContrastiveParameter {
