@@ -34,8 +34,8 @@ namespace caffe {
 
 				anchor_data[0] = Dtype(0.5 * (this->anchor_stride_ * this->scales[s] - cur_W));
 				anchor_data[1] = Dtype(0.5 * (this->anchor_stride_ * this->scales[s] - cur_H));
-				anchor_data[2] = anchor_data[0] + cur_W - Dtype(1);
-				anchor_data[3] = anchor_data[1] + cur_H - Dtype(1);
+				anchor_data[2] = anchor_data[0] + cur_W;
+				anchor_data[3] = anchor_data[1] + cur_H;
 				anchor_data += 4;
 			}
 		}
@@ -313,12 +313,12 @@ namespace caffe {
 								for (int pos = 0; pos < 4; ++pos)
 									offset_1[pos] = top[s + scal_nums]->offset(n, pos * anchor_nums + c, h, w);
 								// get the transform parameters from the box to gbox
-								Dtype src_w = std::max(*(top1_data[s] + offset_1[2]) - *(top1_data[s] + offset_1[0]) + (Dtype)1, (Dtype)1);
-								Dtype src_h = std::max(*(top1_data[s] + offset_1[3]) - *(top1_data[s] + offset_1[1]) + (Dtype)1, (Dtype)1);
+								Dtype src_w = std::max(*(top1_data[s] + offset_1[2]) - *(top1_data[s] + offset_1[0]), (Dtype)1);
+								Dtype src_h = std::max(*(top1_data[s] + offset_1[3]) - *(top1_data[s] + offset_1[1]), (Dtype)1);
 								Dtype src_cenx = *(top1_data[s] + offset_1[0]) + (Dtype)0.5 * src_w;
 								Dtype src_ceny = *(top1_data[s] + offset_1[1]) + (Dtype)0.5 * src_h;
-								Dtype tar_w = std::max(bbox_data_gt[2] - bbox_data_gt[0] + (Dtype)1, (Dtype)1);
-								Dtype tar_h = std::max(bbox_data_gt[3] - bbox_data_gt[1] + (Dtype)1, (Dtype)1);
+								Dtype tar_w = std::max(bbox_data_gt[2] - bbox_data_gt[0], (Dtype)1);
+								Dtype tar_h = std::max(bbox_data_gt[3] - bbox_data_gt[1], (Dtype)1);
 								Dtype tar_cenx = bbox_data_gt[0] + (Dtype)0.5 * tar_w;
 								Dtype tar_ceny = bbox_data_gt[1] + (Dtype)0.5 * tar_h;
 
