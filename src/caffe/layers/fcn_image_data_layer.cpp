@@ -208,7 +208,7 @@ namespace caffe {
 		Dtype* mask_data = this->prefetch_current_->label_.mutable_cpu_data();
 		for (int i = 0; i < this->prefetch_current_->label_.count(); ++i) {
 			if (mask_data[i] != Dtype(255) && mask_data[i] > class_nums)
-				mask_data[i] = class_nums;
+				mask_data[i] = Dtype(255);
 		}
 
 		CHECK_EQ(class_nums, top[1]->channels());
@@ -219,7 +219,14 @@ namespace caffe {
 		for (int n = 0; n < nums; ++n) {
 			for (int c = 1; c <= class_nums; ++c) {
 				for (int i = 0; i < img_size; ++i) {
-					*top1_data++ = (*(mask_data + i) == Dtype(c) || *(mask_data + i) == Dtype(255)) ? *(mask_data + i) : Dtype(0);
+					if(mask_data[i] == Dtype(255))
+						*top1_data = Dtype(255);
+					else if(mask_data[i] == Dtype(c))
+						*top1_data = Dtype(1);
+					else
+						*top1_data = Dtype(0);
+					++top1_data;
+					//*top1_data++ = (*(mask_data + i) == Dtype(c) || *(mask_data + i) == Dtype(255)) ? *(mask_data + i) : Dtype(0);
 				}
 			}
 			mask_data += img_size;

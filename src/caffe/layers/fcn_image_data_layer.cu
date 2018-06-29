@@ -8,7 +8,7 @@ namespace caffe {
 	__global__ void kernel_pixelwise_clip(const int total_nums, const int class_nums, Dtype* mask_data) {
 		CUDA_KERNEL_LOOP(index, total_nums) {
 			if (mask_data[index] != Dtype(255) && mask_data[index] > class_nums)
-				mask_data[index] = class_nums;
+				mask_data[index] = Dtype(255);
 		}
 	}
 
@@ -19,7 +19,13 @@ namespace caffe {
 			int idn = index % img_size;
 			int c = index % (img_size * channel_nums) / img_size;
 			int mask_idx = n * img_size + idn;
-			top1_data[index] = (mask_data[mask_idx] == Dtype(c+1) || mask_data[mask_idx] == Dtype(255)) ? mask_data[mask_idx] : Dtype(0);
+			if(mask_data[mask_idx] == Dtype(255))
+				top1_data[index] = Dtype(255);
+			else if(mask_data[mask_idx] == Dtype(c+1))
+				top1_data[index] = Dtype(1);
+			else
+				top1_data[index] = Dtype(0);
+			// top1_data[index] = (mask_data[mask_idx] == Dtype(c+1) || mask_data[mask_idx] == Dtype(255)) ? mask_data[mask_idx] : Dtype(0);
 		}
 	}
 
