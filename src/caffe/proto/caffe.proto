@@ -465,6 +465,7 @@ message LayerParameter {
   optional SoftmaxFocalLossParameter softmax_focal_loss_param = 248;
   optional CPMTransformationParameter cpm_transform_param = 249;
   optional TVLossParameter tv_loss_param = 250;
+  optional BboxAttentionMapParameter bbox_attention_map_param = 251;
 }
 
 // Message that stores parameters used to apply transformation
@@ -920,6 +921,7 @@ message ImageDataParameter {
   optional uint32 balance_by = 23 [default = 0];
   optional uint32 label_cut_start = 24 [default = 0];
   optional uint32 label_cut_end = 25 [default = 0];
+  optional string bbox_source = 26 [default = ""];
 }
 
 message ImageMixHDF5DataParameter {
@@ -2161,6 +2163,13 @@ message CPMTransformationParameter {
 
 message TVLossParameter {
     optional float beta = 1 [default = 2];
+}
+
+message BboxAttentionMapParameter {
+	optional int32 img_width = 1;
+	optional int32 img_height = 2;
+	optional int32 map_width = 3;
+	optional int32 map_height = 4;
 }
 
 

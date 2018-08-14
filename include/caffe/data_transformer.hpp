@@ -76,6 +76,8 @@ class DataTransformer {
    */
   void Transform(const cv::Mat& cv_img, Blob<Dtype>* transformed_blob, bool transpose = false);
 
+  void Transform(const cv::Mat& cv_img, Blob<Dtype>* transformed_blob, std::vector<Dtype> &label_data_with_bbox);
+
   /* new add on 2017/11/10.
    * Do data augumentation starting from an rare input image.
    */

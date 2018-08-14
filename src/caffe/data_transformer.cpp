@@ -248,6 +248,223 @@ void DataTransformer<Dtype>::Transform(const vector<cv::Mat> & mat_vector,
 }
 
 template<typename Dtype>
+void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img, Blob<Dtype>* transformed_blob, std::vector<Dtype> &label_data_with_bbox)
+{
+	int crop_h = 0;
+	int crop_w = 0;
+	if (param_.has_crop_size()) {
+		crop_h = param_.crop_size();
+		crop_w = param_.crop_size();
+	}
+	if (param_.has_crop_h()) {
+		crop_h = param_.crop_h();
+	}
+	if (param_.has_crop_w()) {
+		crop_w = param_.crop_w();
+	}
+	const int img_channels = cv_img.channels();
+	const int img_height = cv_img.rows;
+	const int img_width = cv_img.cols;
+
+	// Check dimensions.
+	const int channels = transformed_blob->channels();
+	const int height = transformed_blob->height();
+	const int width = transformed_blob->width();
+	const int num = transformed_blob->num();
+	const int label_data_size = label_data_with_bbox.size();
+
+	CHECK_GT(label_data_size, 4);
+	CHECK_EQ(channels, img_channels);
+	CHECK_LE(height, img_height);
+	CHECK_LE(width, img_width);
+	CHECK_GE(num, 1);
+	//if (transpose) {
+	//  std::swap(height, width);
+	//}
+
+	//CHECK(cv_img.depth() == CV_8U) << "Image data type must be unsigned byte";
+
+	const Dtype scale = param_.scale();
+	const bool do_mirror = param_.mirror() && Rand(2);
+	const bool has_mean_file = param_.has_mean_file();
+	const bool has_mean_values = mean_values_.size() > 0;
+
+	CHECK_GT(img_channels, 0);
+	CHECK_GE(img_height, crop_h);
+	CHECK_GE(img_width, crop_w);
+
+	Dtype* mean = NULL;
+	if (has_mean_file) {
+		CHECK_EQ(img_channels, data_mean_.channels());
+		CHECK_EQ(img_height, data_mean_.height());
+		CHECK_EQ(img_width, data_mean_.width());
+		mean = data_mean_.mutable_cpu_data();
+	}
+	if (has_mean_values) {
+		CHECK(mean_values_.size() == 1 || mean_values_.size() == img_channels) <<
+			"Specify either 1 mean_value or as many as channels: " << img_channels;
+		if (img_channels > 1 && mean_values_.size() == 1) {
+			// Replicate the mean_value for simplicity
+			for (int c = 1; c < img_channels; ++c) {
+				mean_values_.push_back(mean_values_[0]);
+			}
+		}
+	}
+
+	// add a random-color mask square in image
+	int mask_size_min = param_.mask_size_min();
+	int mask_size_max = param_.mask_size_max();
+	CHECK_GE(mask_size_max, mask_size_min);
+	CHECK_GE(std::min(img_height, img_width), mask_size_max);
+	const bool do_mask = (mask_size_min || mask_size_max) && !Rand(4);
+	cv::Mat cv_masked_img;
+	if (do_mask) {
+		cv_masked_img = cv_img.clone();
+		cv::RNG uni_rng(time(0));
+		int crop_size_ = uni_rng.uniform(mask_size_min, mask_size_max + 1);
+		int tl_pos_x_ = uni_rng.uniform(0, img_width - crop_size_ + 1);
+		int tl_pos_y_ = uni_rng.uniform(0, img_height - crop_size_ + 1);
+		cv::Mat masked_reg(cv_masked_img, cv::Rect(tl_pos_x_, tl_pos_y_, crop_size_, crop_size_));
+		vector<uchar> random_pix_color(img_channels);
+		for (int i = 0; i < img_channels; ++i)
+			random_pix_color[i] = uni_rng.uniform(0, 256);
+		for (int row_ = 0; row_ < masked_reg.rows; ++row_) {
+			uchar* ptr = masked_reg.ptr<uchar>(row_);
+			int img_index = 0;
+			for (int col_ = 0; col_ < masked_reg.cols; ++col_) {
+				for (int c_ = 0; c_ < img_channels; ++c_)
+					//ptr[img_index++] = uni_rng.uniform(0, 256);
+					ptr[img_index++] = random_pix_color[c_];
+			}
+		}
+	}
+	else
+		cv_masked_img = cv_img;
+
+	int h_off = 0;
+	int w_off = 0;
+	cv::Mat cv_cropped_img = cv_masked_img;
+	if (crop_h || crop_w) {
+		CHECK_EQ(crop_h, height);
+		CHECK_EQ(crop_w, width);
+		// We only do random crop when we do training.
+		if (phase_ == TRAIN && !param_.center_crop()) {
+			h_off = Rand(img_height - crop_h + 1);
+			w_off = Rand(img_width - crop_w + 1);
+		}
+		else {
+			h_off = (img_height - crop_h) / 2;
+			w_off = (img_width - crop_w) / 2;
+		}
+		cv::Rect roi(w_off, h_off, crop_w, crop_h);
+		cv_cropped_img = cv_cropped_img(roi);
+
+		label_data_with_bbox[label_data_size - 4] -= Dtype(w_off);
+		label_data_with_bbox[label_data_size - 3] -= Dtype(h_off);
+	}
+	else {
+		CHECK_EQ(img_height, height);
+		CHECK_EQ(img_width, width);
+	}
+
+	CHECK(cv_cropped_img.data);
+	// image color distort.
+	if (param_.color_distort() == true) {
+		const int distort_type = Rand(7);
+		switch (distort_type)
+		{
+		case 0:
+		case 1:
+		case 2: // do nothing. Remain to be org image.
+			; break;
+		case 3: // GaussianBlur
+			cv::GaussianBlur(cv_cropped_img, cv_cropped_img, cv::Size(3, 3), 1.5, 1.5); break;
+		case 4: // GaussianNoise
+		{
+			cv::Mat gauss_noise(cv_cropped_img.rows, cv_cropped_img.cols, CV_32FC(img_channels));
+			cv::randn(gauss_noise, 0, 0.0316 * 255);
+			cv::Mat cv_cropped_img_float;
+			cv_cropped_img.convertTo(cv_cropped_img_float, CV_32FC(img_channels));
+			cv_cropped_img_float += gauss_noise;
+			cv_cropped_img_float.convertTo(cv_cropped_img, CV_8UC(img_channels));
+		}   break;
+		case 5:
+		case 6: // Brightness and Contrast
+		{
+			cv::RNG uni_rng(time(0));
+			float brightness_ = uni_rng.uniform(-0.055f, 0.055f);
+			float contrast_ = uni_rng.uniform(-0.085f, 0.085f);
+			float slope_k = tan((45 + 44 * contrast_) / 180 * 3.1415926);
+			uchar look_up_tab[256];
+			for (int idx = 0; idx < 256; ++idx)
+				look_up_tab[idx] = cv::saturate_cast<uchar>((idx - 127.5 * (1 - brightness_)) * slope_k + 127.5 * (1 + brightness_));
+			cv::Mat lut_mat(1, 256, CV_8UC1, look_up_tab);
+
+			const int rand_channel_idx = Rand(4);
+			if (rand_channel_idx == 0) // BGR
+				cv::LUT(cv_cropped_img, lut_mat, cv_cropped_img);
+			else {
+				std::vector<cv::Mat> img_split;
+				cv::split(cv_cropped_img, img_split);
+
+				if (rand_channel_idx == 1) // B
+					cv::LUT(img_split[0], lut_mat, img_split[0]);
+				else if (rand_channel_idx == 2) // G
+					cv::LUT(img_split[1], lut_mat, img_split[1]);
+				else // R
+					cv::LUT(img_split[2], lut_mat, img_split[2]);
+
+				cv::merge(img_split, cv_cropped_img);
+			}
+		}  break;
+		default:   LOG(ERROR) << "Unknown Color_distort type!"; break;
+		}
+	}
+
+	Dtype* transformed_data = transformed_blob->mutable_cpu_data();
+	bool is_float_data = cv_cropped_img.depth() == CV_32F;
+	int top_index;
+
+	if (do_mirror) {
+		label_data_with_bbox[label_data_size - 4] = Dtype(cv_cropped_img.cols) - label_data_with_bbox[label_data_size - 2] - label_data_with_bbox[label_data_size - 4];
+	}
+
+		for (int h = 0; h < height; ++h) {
+			const uchar* ptr = cv_cropped_img.ptr<uchar>(h);
+			const float* float_ptr = cv_cropped_img.ptr<float>(h);
+			int img_index = 0;
+			for (int w = 0; w < width; ++w) {
+				for (int c = 0; c < img_channels; ++c) {
+					if (do_mirror) {
+						top_index = (c * height + h) * width + (width - 1 - w);
+					}
+					else {
+						top_index = (c * height + h) * width + w;
+					}
+					// int top_index = (c * height + h) * width + w;
+					Dtype pixel = static_cast<Dtype>(is_float_data ? float_ptr[img_index] : ptr[img_index]);
+					img_index++;
+					if (has_mean_file) {
+						int mean_index;
+						mean_index = (c * img_height + h_off + h) * img_width + w_off + w;
+						transformed_data[top_index] =
+							(pixel - mean[mean_index]) * scale;
+					}
+					else {
+						if (has_mean_values) {
+							transformed_data[top_index] =
+								(pixel - mean_values_[c]) * scale;
+						}
+						else {
+							transformed_data[top_index] = pixel * scale;
+						}
+					}
+				}
+			}
+		}
+}
+
+template<typename Dtype>
 void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
 	Blob<Dtype>* transformed_blob,
 	bool transpose) {
