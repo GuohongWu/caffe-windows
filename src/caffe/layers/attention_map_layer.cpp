@@ -42,9 +42,9 @@ namespace caffe {
 			cv::Rect cur_bbox(bbox_data[0], bbox_data[1], bbox_data[2], bbox_data[3]);
 			cur_bbox &= org_img_rect;
 
-			org_att_map = 0;
+			org_att_map = 0.0f;
 			if (cur_bbox.area() > 0) {
-				org_att_map(cur_bbox) = 1;
+				org_att_map(cur_bbox) = 1.0f;
 			}
 			cv::resize(org_att_map, out_att_map, out_att_map.size(), 0, 0, CV_INTER_AREA);
 			for (int i = 0; i < map_area; ++i)

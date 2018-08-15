@@ -984,7 +984,7 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
 	  }
 
 	  //6. fill into size[new_width, new_height] mat.
-	  cv::Mat full_img_uchar(new_height, new_width, CV_8UC(channel_));
+	  cv::Mat full_img_uchar(new_height, new_width, CV_8UC(channel_), cv::Scalar_<uchar>::all(0));
 	  cv_img_colored.copyTo(full_img_uchar(cv::Rect(0, 0, img_width, img_height)));
 
 	  //7. finally, (imgData - mean_) * scale_
@@ -1023,7 +1023,7 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
 	  // optional: if we have segMask_blob
 	  if (cv_mask_img.data) {
 		  CHECK_EQ(cv_mask_img_scaled.channels(), 1);
-		  cv::Mat filled_mask_img_float(new_height, new_width, CV_32FC1);
+		  cv::Mat filled_mask_img_float(new_height, new_width, CV_32FC1, cv::Scalar_<float>::all(0.0f));
 		  cv_mask_img_scaled.convertTo(cv_mask_img_scaled, CV_32F);
 		  cv_mask_img_scaled.copyTo(filled_mask_img_float(cv::Rect(0, 0, img_width, img_height)));
 
