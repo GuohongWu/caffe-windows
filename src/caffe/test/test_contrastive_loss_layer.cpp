@@ -36,7 +36,7 @@ class ContrastiveLossLayerTest : public MultiDeviceTest<TypeParam> {
     for (int i = 0; i < blob_bottom_y_->count(); ++i) {
       blob_bottom_y_->mutable_cpu_data()[i] = caffe_rng_rand() % 2;  // 0 or 1
     }
-    blob_bottom_vec_.push_back(blob_bottom_y_);
+
 	blob_bottom_vec_.push_back(blob_bottom_y_);
     blob_top_vec_.push_back(blob_top_loss_);
   }
@@ -91,7 +91,7 @@ TYPED_TEST(ContrastiveLossLayerTest, TestGradient) {
   LayerParameter layer_param;
   ContrastiveLossLayer<Dtype> layer(layer_param);
   layer.SetUp(this->blob_bottom_vec_, this->blob_top_vec_);
-  GradientChecker<Dtype> checker(1e-2, 1e-2, 1701);
+  GradientChecker<Dtype> checker(1e-3, 1e-3, caffe_rng_rand());
   // check the gradient for the first two bottom layers
   checker.CheckGradientExhaustive(&layer, this->blob_bottom_vec_,
       this->blob_top_vec_, 0);
@@ -132,9 +132,11 @@ TYPED_TEST(ContrastiveLossLayerTest, TestGradientLegacy) {
   typedef typename TypeParam::Dtype Dtype;
   LayerParameter layer_param;
   layer_param.mutable_contrastive_loss_param()->set_legacy_version(true);
+  layer_param.mutable_contrastive_loss_param()->set_add_weighted(true);
+  layer_param.mutable_contrastive_loss_param()->set_margin(4.0f);
   ContrastiveLossLayer<Dtype> layer(layer_param);
   layer.SetUp(this->blob_bottom_vec_, this->blob_top_vec_);
-  GradientChecker<Dtype> checker(1e-2, 1e-2, 1701);
+  GradientChecker<Dtype> checker(1e-3, 1e-3, caffe_rng_rand());
   // check the gradient for the first two bottom layers
   checker.CheckGradientExhaustive(&layer, this->blob_bottom_vec_,
       this->blob_top_vec_, 0);

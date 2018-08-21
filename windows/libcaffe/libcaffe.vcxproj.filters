@@ -549,6 +549,9 @@
     <ClCompile Include="..\..\src\caffe\layers\attention_map_layer.cpp">
       <Filter>src\layers</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\caffe\layers\image_pair_data_layer.cpp">
+      <Filter>src\layers</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\include\caffe\proto\caffe.pb.h">
@@ -1005,6 +1008,9 @@
       <Filter>include\layers</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\caffe\layers\attention_map_layer.hpp">
+      <Filter>include\layers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\caffe\layers\image_pair_data_layer.hpp">
       <Filter>include\layers</Filter>
     </ClInclude>
   </ItemGroup>
