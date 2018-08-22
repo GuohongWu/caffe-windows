@@ -646,6 +646,7 @@ message ContrastiveLossParameter {
   // reproduce existing models and results
   optional bool legacy_version = 2 [default = false];
   optional bool add_weighted = 3 [default = false];
+  optional float inner_margin = 4 [default = 0.0];
 }
 
 message ConvolutionParameter {
