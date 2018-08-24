@@ -73,7 +73,10 @@
     <ClCompile Include="..\..\src\caffe\test\test_caffe_main.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\src\caffe\test\test_contrastive_loss_layer.cpp" />
+    <ClCompile Include="..\..\src\caffe\test\test_contrastive_loss_layer.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\src\caffe\test\test_cosine_contrastive_loss_layer.cpp" />
     <ClCompile Include="..\..\src\caffe\test\test_cpm_data_layer.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
