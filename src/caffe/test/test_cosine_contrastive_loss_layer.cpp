@@ -64,6 +64,7 @@ namespace caffe {
 		LayerParameter layer_param;
 		layer_param.mutable_contrastive_loss_param()->set_add_weighted(true);
 		layer_param.mutable_contrastive_loss_param()->set_margin(-1.0f);
+		layer_param.mutable_contrastive_loss_param()->set_inner_margin(0.261799f);
 
 		CosineContrastiveLossLayer<Dtype> layer(layer_param);
 		layer.SetUp(this->blob_bottom_vec_, this->blob_top_vec_);

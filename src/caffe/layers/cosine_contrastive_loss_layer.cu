@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <vector>
+#include <cmath>
 
 #include "caffe/layers/cosine_contrastive_loss_layer.hpp"
 #include "caffe/util/math_functions.hpp"
@@ -31,8 +32,8 @@ namespace caffe {
 		Dtype loss(0.0);
 		const int channels = bottom[0]->channels();
 		for (int i = 0; i < bottom[0]->num(); ++i) {
-			Dtype x_len_out, y_len_out;
-			caffe_gpu_dot(channels, bottom[0]->gpu_data() + (i*channels), bottom[1]->gpu_data() + (i*channels), this->dot_prod_.mutable_cpu_data() + i);
+			Dtype dot_prod_out, x_len_out, y_len_out;
+			caffe_gpu_dot(channels, bottom[0]->gpu_data() + (i*channels), bottom[1]->gpu_data() + (i*channels), &dot_prod_out);
 			caffe_gpu_dot(channels, bottom[0]->gpu_data() + (i*channels), bottom[0]->gpu_data() + (i*channels), &x_len_out);
 			caffe_gpu_dot(channels, bottom[1]->gpu_data() + (i*channels), bottom[1]->gpu_data() + (i*channels), &y_len_out);
 
@@ -40,15 +41,25 @@ namespace caffe {
 			this->x_len_.mutable_cpu_data()[i] = sqrt(x_len_out);
 			this->y_len_.mutable_cpu_data()[i] = sqrt(y_len_out);
 
-			Dtype cur_cosine_val = this->dot_prod_.cpu_data()[i] / (this->x_len_.cpu_data()[i] + Dtype(1e-6)) / (this->y_len_.cpu_data()[i] + Dtype(1e-6));
+			Dtype cur_cosine_val = dot_prod_out / (this->x_len_.cpu_data()[i] + Dtype(1e-6)) / (this->y_len_.cpu_data()[i] + Dtype(1e-6));
+			this->cos_theta_.mutable_cpu_data()[i] = cur_cosine_val;
+			this->sin_theta_.mutable_cpu_data()[i] = sqrt(Dtype(1) - cur_cosine_val * cur_cosine_val);
+
+			Dtype cos_theta_plus_m = cur_cosine_val * this->cos_m - this->sin_m * this->sin_theta_.cpu_data()[i];
 			if (static_cast<int>(bottom[2]->cpu_data()[i])) {  // similar pairs
-				loss += this->pos_weight_ * (Dtype(1) - cur_cosine_val);
+				if (cur_cosine_val + this->cos_m >= Dtype(0))
+					loss += this->pos_weight_ * (Dtype(1) - cos_theta_plus_m);
+				else
+					loss += this->pos_weight_ * (Dtype(3) + cos_theta_plus_m);
 			}
 			else {  // dissimilar pairs
-				loss += this->neg_weight_ * std::max(margin, cur_cosine_val);
+				if (cur_cosine_val + this->cos_m >= Dtype(0))
+					loss += this->neg_weight_ * std::max(margin, cos_theta_plus_m);
+				else
+					loss += this->neg_weight_ * std::max(margin, Dtype(-2) - cos_theta_plus_m);
 			}
 		}
-		loss = loss / static_cast<Dtype>(bottom[0]->num()) / Dtype(2);
+		loss = loss / static_cast<Dtype>(bottom[0]->num());
 		top[0]->mutable_cpu_data()[0] = loss;
 	}
 
@@ -59,28 +70,42 @@ namespace caffe {
 		Dtype margin = this->layer_param_.contrastive_loss_param().margin();
 		int num = bottom[0]->num();
 		int channels = bottom[0]->channels();
-		const Dtype alpha = Dtype(0.5) * top[0]->cpu_diff()[0] /
-			static_cast<Dtype>(num);
+		const Dtype alpha = top[0]->cpu_diff()[0] / static_cast<Dtype>(num);
 
 		if (propagate_down[0]) {
 			Dtype* bout = bottom[0]->mutable_gpu_diff();
 			for (int j = 0; j < num; ++j) {
-				Dtype cur_cosine_val = this->dot_prod_.cpu_data()[j] / (this->x_len_.cpu_data()[j] + Dtype(1e-6)) / (this->y_len_.cpu_data()[j] + Dtype(1e-6));
+				Dtype cur_cos_theta = this->cos_theta_.cpu_data()[j];
+				Dtype cur_sin_theta = this->sin_theta_.cpu_data()[j];
+				Dtype diff_to_cosTheta = Dtype(0);
+
 				if (static_cast<int>(bottom[2]->cpu_data()[j])) {  // similar pairs
+					diff_to_cosTheta = -this->pos_weight_ * (this->cos_m + this->sin_m * cur_cos_theta / (cur_sin_theta + Dtype(1e-6)));
+					if (cur_cos_theta + this->cos_m < Dtype(0))
+						diff_to_cosTheta = -diff_to_cosTheta;
+
 					caffe_copy(channels, bottom[1]->gpu_data() + (j * channels), bout + (j * channels));
 					caffe_gpu_axpby(channels,
-						alpha * this->pos_weight_ * cur_cosine_val / (this->x_len_.cpu_data()[j] * this->x_len_.cpu_data()[j] + Dtype(1e-6)),
+						-alpha * diff_to_cosTheta * cur_cos_theta / (this->x_len_.cpu_data()[j] * this->x_len_.cpu_data()[j] + Dtype(1e-6)),
 						bottom[0]->gpu_data() + (j * channels),
-						-alpha * this->pos_weight_ / (this->x_len_.cpu_data()[j] * this->y_len_.cpu_data()[j] + Dtype(1e-6)),
+						alpha * diff_to_cosTheta / (this->x_len_.cpu_data()[j] * this->y_len_.cpu_data()[j] + Dtype(1e-6)),
 						bout + (j * channels));
 				}
 				else {
-					if (cur_cosine_val > margin) {
+					Dtype mdist = this->cos_m * cur_cos_theta - this->sin_m * cur_sin_theta;
+					if (cur_cos_theta + this->cos_m < Dtype(0))
+						mdist = Dtype(-2) - mdist;
+
+					if (mdist > margin) {
+						diff_to_cosTheta = this->neg_weight_ * (this->cos_m + this->sin_m * cur_cos_theta / (cur_sin_theta + Dtype(1e-6)));
+						if (cur_cos_theta + this->cos_m < Dtype(0))
+							diff_to_cosTheta = -diff_to_cosTheta;
+
 						caffe_copy(channels, bottom[1]->gpu_data() + (j * channels), bout + (j * channels));
 						caffe_gpu_axpby(channels,
-							-alpha * this->neg_weight_ * cur_cosine_val / (this->x_len_.cpu_data()[j] * this->x_len_.cpu_data()[j] + Dtype(1e-6)),
+							-alpha * diff_to_cosTheta * cur_cos_theta / (this->x_len_.cpu_data()[j] * this->x_len_.cpu_data()[j] + Dtype(1e-6)),
 							bottom[0]->gpu_data() + (j * channels),
-							alpha * this->neg_weight_ / (this->x_len_.cpu_data()[j] * this->y_len_.cpu_data()[j] + Dtype(1e-6)),
+							alpha * diff_to_cosTheta / (this->x_len_.cpu_data()[j] * this->y_len_.cpu_data()[j] + Dtype(1e-6)),
 							bout + (j * channels));
 					}
 					else {
@@ -93,22 +118,37 @@ namespace caffe {
 		if (propagate_down[1]) {
 			Dtype* bout = bottom[1]->mutable_gpu_diff();
 			for (int j = 0; j < num; ++j) {
-				Dtype cur_cosine_val = this->dot_prod_.cpu_data()[j] / (this->x_len_.cpu_data()[j] + Dtype(1e-6)) / (this->y_len_.cpu_data()[j] + Dtype(1e-6));
+				Dtype cur_cos_theta = this->cos_theta_.cpu_data()[j];
+				Dtype cur_sin_theta = this->sin_theta_.cpu_data()[j];
+				Dtype diff_to_cosTheta = Dtype(0);
+
 				if (static_cast<int>(bottom[2]->cpu_data()[j])) {  // similar pairs
+					diff_to_cosTheta = -this->pos_weight_ * (this->cos_m + this->sin_m * cur_cos_theta / (cur_sin_theta + Dtype(1e-6)));
+					if (cur_cos_theta + this->cos_m < Dtype(0))
+						diff_to_cosTheta = -diff_to_cosTheta;
+
 					caffe_copy(channels, bottom[1]->gpu_data() + (j * channels), bout + (j * channels));
 					caffe_gpu_axpby(channels,
-						-alpha * this->pos_weight_ / (this->x_len_.cpu_data()[j] * this->y_len_.cpu_data()[j] + Dtype(1e-6)),
+						alpha * diff_to_cosTheta / (this->x_len_.cpu_data()[j] * this->y_len_.cpu_data()[j] + Dtype(1e-6)),
 						bottom[0]->gpu_data() + (j * channels),
-						alpha * this->pos_weight_ * cur_cosine_val / (this->y_len_.cpu_data()[j] * this->y_len_.cpu_data()[j] + Dtype(1e-6)),
+						-alpha * diff_to_cosTheta * cur_cos_theta / (this->y_len_.cpu_data()[j] * this->y_len_.cpu_data()[j] + Dtype(1e-6)),
 						bout + (j * channels));
 				}
 				else {
-					if (cur_cosine_val > margin) {
+					Dtype mdist = this->cos_m * cur_cos_theta - this->sin_m * cur_sin_theta;
+					if (cur_cos_theta + this->cos_m < Dtype(0))
+						mdist = Dtype(-2) - mdist;
+
+					if (mdist > margin) {
+						diff_to_cosTheta = this->neg_weight_ * (this->cos_m + this->sin_m * cur_cos_theta / (cur_sin_theta + Dtype(1e-6)));
+						if (cur_cos_theta + this->cos_m < Dtype(0))
+							diff_to_cosTheta = -diff_to_cosTheta;
+
 						caffe_copy(channels, bottom[1]->gpu_data() + (j * channels), bout + (j * channels));
 						caffe_gpu_axpby(channels,
-							alpha * this->neg_weight_ / (this->x_len_.cpu_data()[j] * this->y_len_.cpu_data()[j] + Dtype(1e-6)),
+							alpha * diff_to_cosTheta / (this->x_len_.cpu_data()[j] * this->y_len_.cpu_data()[j] + Dtype(1e-6)),
 							bottom[0]->gpu_data() + (j * channels),
-							-alpha * this->neg_weight_ * cur_cosine_val / (this->y_len_.cpu_data()[j] * this->y_len_.cpu_data()[j] + Dtype(1e-6)),
+							-alpha * diff_to_cosTheta * cur_cos_theta / (this->y_len_.cpu_data()[j] * this->y_len_.cpu_data()[j] + Dtype(1e-6)),
 							bout + (j * channels));
 					}
 					else {

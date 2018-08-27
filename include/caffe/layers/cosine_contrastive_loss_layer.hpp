@@ -66,12 +66,17 @@ namespace caffe {
 		virtual void Backward_gpu(const vector<Blob<Dtype>*>& top,
 			const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
 
-		Blob<Dtype> dot_prod_;  // cached for x.dot(y)
 		Blob<Dtype> x_len_;  // cached for |x|
 		Blob<Dtype> y_len_;  // cached for |y|
+		Blob<Dtype> cos_theta_; // x.dot(y) / (|x| * |y|)
+		Blob<Dtype> sin_theta_;
 		bool add_weighted;
 		Dtype pos_weight_;
 		Dtype neg_weight_;
+
+		// with inner_margin ( m )
+		Dtype cos_m;
+		Dtype sin_m;
 	};
 
 }  // namespace caffe
