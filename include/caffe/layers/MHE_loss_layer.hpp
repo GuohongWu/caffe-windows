@@ -14,6 +14,10 @@ namespace caffe {
 	// implement MHE loss presented in the paper:
 	// Learning towards Minimum Hyperspherical Energy, 2018.
 
+	/*
+		We assume that bottom[0] datas are L2-normalized.
+	*/
+
 	template <typename Dtype>
 	class MHELossLayer : public LossLayer<Dtype> {
 	public:
@@ -40,7 +44,8 @@ namespace caffe {
 			const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
 
 		Dtype lambda_m;
-		Blob<Dtype> vec_res_temp_;
+		Blob<Dtype> dot_prod_;
+		Blob<Dtype> loss_temp_;  // temp for gpu_forward
 	};
 
 }

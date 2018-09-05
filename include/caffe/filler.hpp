@@ -124,6 +124,34 @@ class PositiveUnitballFiller : public Filler<Dtype> {
   }
 };
 
+template <typename Dtype>
+class UnitSphereFiller : public Filler<Dtype> {
+public:
+	explicit UnitSphereFiller(const FillerParameter& param)
+		: Filler<Dtype>(param) {}
+	virtual void Fill(Blob<Dtype>* blob) {
+		Dtype* data = blob->mutable_cpu_data();
+		DCHECK(blob->count());
+		caffe_rng_uniform<Dtype>(blob->count(), -1, 1, blob->mutable_cpu_data());
+		// We expect the filler to not be called very frequently, so we will
+		// just use a simple implementation
+		int dim = blob->count() / blob->num();
+		CHECK(dim);
+		for (int i = 0; i < blob->num(); ++i) {
+			Dtype sqr_sum = 0;
+			for (int j = 0; j < dim; ++j) {
+				sqr_sum += data[i * dim + j] * data[i * dim + j];
+			}
+			Dtype vec_len_ = sqrt(sqr_sum);
+			for (int j = 0; j < dim; ++j) {
+				data[i * dim + j] /= vec_len_;
+			}
+		}
+		CHECK_EQ(this->filler_param_.sparse(), -1)
+			<< "Sparsity not supported by this Filler.";
+	}
+};
+
 /**
  * @brief Fills a Blob with values @f$ x \sim U(-a, +a) @f$ where @f$ a @f$ is
  *        set inversely proportional to number of incoming nodes, outgoing

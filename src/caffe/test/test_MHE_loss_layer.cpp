@@ -20,18 +20,18 @@ namespace caffe {
 
 	protected:
 		MHELossLayerTest()
-			: blob_bottom_data_i_(new Blob<Dtype>(10572, 512, 1, 1)),
-			blob_bottom_y_(new Blob<Dtype>(256, 1, 1, 1)),
+			: blob_bottom_data_i_(new Blob<Dtype>(100, 32, 1, 1)),
+			blob_bottom_y_(new Blob<Dtype>(16, 1, 1, 1)),
 			blob_top_loss_(new Blob<Dtype>()) {
 			// fill the values
 			FillerParameter filler_param;
 			filler_param.set_min(-1.0);
 			filler_param.set_max(1.0);  // distances~=1.0 to test both sides of margin
-			UniformFiller<Dtype> filler(filler_param);
+			UnitSphereFiller<Dtype> filler(filler_param);
 			filler.Fill(this->blob_bottom_data_i_);
 			blob_bottom_vec_.push_back(blob_bottom_data_i_);
 			for (int i = 0; i < blob_bottom_y_->count(); ++i) {
-				blob_bottom_y_->mutable_cpu_data()[i] = caffe_rng_rand() % 10572;  // 0 ~ 10571
+				blob_bottom_y_->mutable_cpu_data()[i] = caffe_rng_rand() % 100;  // 0 ~ 99
 			}
 
 			blob_bottom_vec_.push_back(blob_bottom_y_);
@@ -61,7 +61,7 @@ namespace caffe {
 
 		MHELossLayer<Dtype> layer(layer_param);
 		layer.SetUp(this->blob_bottom_vec_, this->blob_top_vec_);
-		GradientChecker<Dtype> checker(1e-3, 1e-3);
+		GradientChecker<Dtype> checker(1e-3, 1e-3, caffe_rng_rand());
 		// check the gradient for the first two bottom layers
 		checker.CheckGradientExhaustive(&layer, this->blob_bottom_vec_,
 			this->blob_top_vec_, 0);

@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <vector>
 #include <cmath>
+#include <cfloat>
 
 #include "caffe/layers/MHE_loss_layer.hpp"
 #include "caffe/util/math_functions.hpp"
@@ -17,7 +18,8 @@ namespace caffe {
 		CHECK_EQ(bottom[1]->channels(), 1);
 
 		this->lambda_m = this->layer_param_.mhe_loss_param().lambda_m();
-		this->vec_res_temp_.Reshape(1, bottom[0]->channels(), bottom[0]->height(), bottom[0]->width());
+		this->dot_prod_.Reshape(bottom[1]->num(), bottom[0]->num(), 1, 1);
+		this->loss_temp_.ReshapeLike(this->dot_prod_);
 	}
 
 	template <typename Dtype>
@@ -34,12 +36,14 @@ namespace caffe {
 
 		const Dtype* bottom_data = bottom[0]->cpu_data();
 		const Dtype* label_data = bottom[1]->cpu_data();
-		Dtype* vec_res_data = this->vec_res_temp_.mutable_cpu_data();
+		Dtype* dot_prod_data = this->dot_prod_.mutable_cpu_data();
 
 		Dtype loss(0.0);
 		int cls_num = bottom[0]->num();
 		int batch_num = bottom[1]->num();
 		int feat_dim = bottom[0]->count() / cls_num;
+
+//#pragma omp parallel for (With omp ON, the result is NOT correct!)
 		for (int i = 0; i < batch_num; ++i) {
 			int gt_label = static_cast<int>(label_data[i]);
 			CHECK_GE(gt_label, 0);
@@ -47,11 +51,27 @@ namespace caffe {
 			for (int k = 0; k < cls_num; ++k) {
 				if (k == gt_label)
 					continue;
-				caffe_sub(feat_dim, bottom_data + gt_label * feat_dim, bottom_data + k * feat_dim, vec_res_data);
-				Dtype sqr_len_ = caffe_cpu_dot(feat_dim, vec_res_data, vec_res_data);
-				loss -= Dtype(0.5) * log(std::max(sqr_len_, Dtype(FLT_MIN)));
+				//caffe_sub(feat_dim, bottom_data + gt_label * feat_dim, bottom_data + k * feat_dim, vec_res_data);
+				dot_prod_data[i * cls_num + k] = Dtype(1) - caffe_cpu_dot(feat_dim, bottom_data + gt_label * feat_dim, bottom_data + k * feat_dim);
+				loss -= log(std::max(dot_prod_data[i * cls_num + k], Dtype(FLT_MIN)));
 			}
 		}
+
+		/*int i, k;
+#pragma omp parallel for
+		for (int idx = 0; idx < batch_num * cls_num; ++idx) {
+			i = idx / cls_num;
+			k = idx % cls_num;
+
+			int gt_label = static_cast<int>(label_data[i]);
+			CHECK_GE(gt_label, 0);
+			CHECK_LT(gt_label, cls_num);
+			if (k == gt_label)
+				continue;
+
+			dot_prod_data[idx] = Dtype(1) - caffe_cpu_dot(feat_dim, bottom_data + gt_label * feat_dim, bottom_data + k * feat_dim);
+			loss -= log(std::max(dot_prod_data[idx], Dtype(FLT_MIN)));
+		}*/
 
 		top[0]->mutable_cpu_data()[0] = loss / Dtype(batch_num * (cls_num - 1)) * this->lambda_m;
 	}
@@ -62,17 +82,18 @@ namespace caffe {
 
 		const Dtype* bottom_data = bottom[0]->cpu_data();
 		const Dtype* label_data = bottom[1]->cpu_data();
-		Dtype* vec_res_data = this->vec_res_temp_.mutable_cpu_data();
+		Dtype* dot_prod_data = this->dot_prod_.mutable_cpu_data();
 
 		int cls_num = bottom[0]->num();
 		int batch_num = bottom[1]->num();
 		int feat_dim = bottom[0]->count() / cls_num;
 
-		const Dtype alpha = - top[0]->cpu_diff()[0] / Dtype(batch_num * (cls_num - 1)) * this->lambda_m;
+		const Dtype alpha = top[0]->cpu_diff()[0] / Dtype(batch_num * (cls_num - 1)) * this->lambda_m;
 		if (propagate_down[0]) {
 			Dtype* bout = bottom[0]->mutable_cpu_diff();
 			caffe_set(bottom[0]->count(), Dtype(0), bout);
 
+//#pragma omp parallel for (With omp ON, the result is NOT correct!)
 			for (int i = 0; i < batch_num; ++i) {
 				int gt_label = static_cast<int>(label_data[i]);
 				CHECK_GE(gt_label, 0);
@@ -80,12 +101,29 @@ namespace caffe {
 				for (int k = 0; k < cls_num; ++k) {
 					if (k == gt_label)
 						continue;
-					caffe_sub(feat_dim, bottom_data + gt_label * feat_dim, bottom_data + k * feat_dim, vec_res_data);
-					Dtype sqr_len_ = caffe_cpu_dot(feat_dim, vec_res_data, vec_res_data);
-					caffe_axpy(feat_dim, alpha / sqr_len_, vec_res_data, bout + gt_label * feat_dim);
-					caffe_axpy(feat_dim, -alpha / sqr_len_, vec_res_data, bout + k * feat_dim);
+
+					Dtype dot_prod_data_sub = std::max(dot_prod_data[i * cls_num + k], Dtype(FLT_MIN));
+					caffe_axpy(feat_dim, alpha / dot_prod_data_sub, bottom_data + k * feat_dim, bout + gt_label * feat_dim);
+					caffe_axpy(feat_dim, alpha / dot_prod_data_sub, bottom_data + gt_label * feat_dim, bout + k * feat_dim);
 				}
 			}
+
+			/*int i, k;
+#pragma omp parallel for
+			for (int idx = 0; idx < batch_num * cls_num; ++idx) {
+				i = idx / cls_num;
+				k = idx % cls_num;
+
+				int gt_label = static_cast<int>(label_data[i]);
+				CHECK_GE(gt_label, 0);
+				CHECK_LT(gt_label, cls_num);
+				if (k == gt_label)
+					continue;
+
+				Dtype dot_prod_data_sub = std::max(dot_prod_data[idx], Dtype(FLT_MIN));
+				caffe_axpy(feat_dim, alpha / dot_prod_data_sub, bottom_data + k * feat_dim, bout + gt_label * feat_dim);
+				caffe_axpy(feat_dim, alpha / dot_prod_data_sub, bottom_data + gt_label * feat_dim, bout + k * feat_dim);
+			}*/
 		}
 	}
 
