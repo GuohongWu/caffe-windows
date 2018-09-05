@@ -466,6 +466,12 @@ message LayerParameter {
   optional CPMTransformationParameter cpm_transform_param = 249;
   optional TVLossParameter tv_loss_param = 250;
   optional BboxAttentionMapParameter bbox_attention_map_param = 251;
+  optional LabelSpecificAddParameter label_specific_add_param = 252;
+  optional NormalizedInnerProductParameter normalized_inner_product_param = 253;
+  optional ChannelScaleParameter channel_scale_param = 254;
+  optional ScalFixNormalizeParameter scalfix_normalize_param = 255;
+  optional LabelSpecificMarginParameter label_specific_margin_param = 256;
+  optional MHELossParameter mhe_loss_param = 257;
 }
 
 // Message that stores parameters used to apply transformation
@@ -969,6 +975,10 @@ message InnerProductParameter {
   // but rather the transfer flag of operations will be toggled accordingly.
   optional bool transpose = 6 [default = false];
   optional bool normalize = 7 [default = false];
+}
+
+message NormalizedInnerProductParameter {
+  optional bool normalize = 1 [default = true];
 }
 
 message InnerDistanceParameter {
@@ -1789,6 +1799,12 @@ message NormalizeParameter {
   optional float eps = 4 [default = 1e-6];
 }
 
+message ScalFixNormalizeParameter {
+  optional string normalize_type = 1 [default = "L2"];
+  optional bool fix_gradient = 2 [default = false];
+  optional bool bp_norm = 3 [default = false];
+}
+
 message GeneralContrastiveParameter {
   optional float positive_margin = 1 [default = 0.0];
   optional float negative_margin = 2 [default = 1.0];
@@ -2172,6 +2188,48 @@ message BboxAttentionMapParameter {
 	optional int32 img_height = 2;
 	optional int32 map_width = 3;
 	optional int32 map_height = 4;
+}
+
+message LabelSpecificAddParameter {
+  optional float bias = 1 [default = 0.0];
+  optional bool transform_test = 2 [default = false];
+  optional float bias_base = 3 [default = 0.0];
+  optional float bias_gamma = 4 [default = 0.0];
+  optional float bias_power = 5 [default = 1.0];
+  optional float bias_min = 6 [default =0.0];
+  optional float bias_max = 7 [default =0.0];
+  optional uint32 iteration = 8 [default = 0];
+}
+
+message ChannelScaleParameter {
+  optional bool do_forward = 1 [default = true];
+  optional bool do_backward_feature = 2 [default = true];
+  optional bool do_backward_scale = 3 [default = true];
+  optional bool global_scale = 4 [default = false];
+  optional float max_global_scale = 5 [default = 1000.0];
+  optional float min_global_scale = 6 [default = 0.0];
+  optional float init_global_scale = 7 [default = 1.0];
+}
+
+message LabelSpecificMarginParameter {
+  enum MarginType {
+    HARD = 0;
+    SOFT = 1;
+  }
+  optional MarginType type   = 9 [default = HARD]; 
+  optional float margin_base = 1 [default = 0.0];
+  optional float margin_max = 2 [default = 10.0];
+  optional float power = 3 [default = 1.0];
+  optional float gamma = 4 [default = 1.0];
+  optional int32 iteration = 5 [default = 0];
+  optional bool reset_margin = 6 [default = false];
+  optional bool margin_on_test = 7 [default = false];
+  optional bool auto_tune = 8 [default = false];
+  optional bool pass_bp = 10 [default = false];
+}
+
+message MHELossParameter {
+  optional float lambda_m = 1 [default = 1.0];
 }
 
 
