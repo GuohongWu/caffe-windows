@@ -17,9 +17,15 @@ namespace caffe {
 		CHECK_EQ(bottom[1]->width(), 1);
 		CHECK_EQ(bottom[1]->channels(), 1);
 
-		this->lambda_m = this->layer_param_.mhe_loss_param().lambda_m();
 		this->dot_prod_.Reshape(bottom[1]->num(), bottom[0]->num(), 1, 1);
 		this->loss_temp_.ReshapeLike(this->dot_prod_);
+
+		this->use_lambda_curve = !this->layer_param_.mhe_loss_param().has_lambda_m();
+		this->lambda_m = this->layer_param_.mhe_loss_param().lambda_m();
+		this->lambda_max = this->layer_param_.mhe_loss_param().lambda_max();
+		this->gamma = this->layer_param_.mhe_loss_param().gamma();
+		this->power = this->layer_param_.mhe_loss_param().power();
+		this->iter = this->layer_param_.mhe_loss_param().iter();
 	}
 
 	template <typename Dtype>
@@ -27,12 +33,20 @@ namespace caffe {
 		const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
 		vector<int> loss_shape(0);  // Loss layers output a scalar; 0 axes.
 		top[0]->Reshape(loss_shape);
+
+		if (top.size() == 2)
+			top[1]->Reshape(loss_shape);
 	}
 
 	template <typename Dtype>
 	void MHELossLayer<Dtype>::Forward_cpu(
 		const vector<Blob<Dtype>*>& bottom,
 		const vector<Blob<Dtype>*>& top) {
+
+		if (this->use_lambda_curve) {
+			this->lambda_m = this->lambda_max * (Dtype(1) - pow(Dtype(1) + this->gamma * this->iter, -this->power));
+			this->iter += Dtype(1);
+		}
 
 		const Dtype* bottom_data = bottom[0]->cpu_data();
 		const Dtype* label_data = bottom[1]->cpu_data();
@@ -74,6 +88,9 @@ namespace caffe {
 		}*/
 
 		top[0]->mutable_cpu_data()[0] = loss / Dtype(batch_num * (cls_num - 1)) * this->lambda_m;
+
+		if (top.size() == 2)
+			top[1]->mutable_cpu_data()[0] = this->lambda_m;
 	}
 
 	template <typename Dtype>

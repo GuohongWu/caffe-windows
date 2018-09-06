@@ -61,6 +61,11 @@ namespace caffe {
 	void MHELossLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
 		const vector<Blob<Dtype>*>& top) {
 
+		if (this->use_lambda_curve) {
+			this->lambda_m = this->lambda_max * (Dtype(1) - pow(Dtype(1) + this->gamma * this->iter, -this->power));
+			this->iter += Dtype(1);
+		}
+
 		const Dtype* bottom_data = bottom[0]->gpu_data();
 		const Dtype* label_data = bottom[1]->gpu_data();
 		Dtype* dot_prod_data = this->dot_prod_.mutable_gpu_data();
@@ -76,6 +81,9 @@ namespace caffe {
 		Dtype loss;
 		caffe_gpu_asum(this->loss_temp_.count(), loss_temp_data, &loss);
 		top[0]->mutable_cpu_data()[0] = (loss / Dtype(batch_num * (cls_num - 1)) - Dtype(1)) * this->lambda_m;
+
+		if (top.size() == 2)
+			top[1]->mutable_cpu_data()[0] = this->lambda_m;
 	}
 
 	template <typename Dtype>

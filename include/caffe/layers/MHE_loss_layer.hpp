@@ -29,7 +29,9 @@ namespace caffe {
 			const vector<Blob<Dtype>*>& top);
 
 		virtual inline int ExactNumBottomBlobs() const { return 2; }
-		virtual inline int ExactNumTopBlobs() const { return 1; }
+		virtual inline int ExactNumTopBlobs() const { return -1; }
+		virtual inline int MinTopBlobs() const { return 1; }
+		virtual inline int MaxTopBlobs() const { return 2; }
 		virtual inline const char* type() const { return "MHELoss"; }
 
 	protected:
@@ -43,7 +45,12 @@ namespace caffe {
 		virtual void Backward_gpu(const vector<Blob<Dtype>*>& top,
 			const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
 
-		Dtype lambda_m;
+		bool use_lambda_curve;
+		Dtype lambda_m;       // if use_lambda_curve=true, lambda_m = lambda_max * [1 - (1 + gamma * iter)^-power]
+		Dtype lambda_max;
+		Dtype gamma;
+		Dtype power;
+		Dtype iter;
 		Blob<Dtype> dot_prod_;
 		Blob<Dtype> loss_temp_;  // temp for gpu_forward
 	};

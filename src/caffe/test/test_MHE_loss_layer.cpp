@@ -57,7 +57,7 @@ namespace caffe {
 	TYPED_TEST(MHELossLayerTest, TestGradient) {
 		typedef typename TypeParam::Dtype Dtype;
 		LayerParameter layer_param;
-		layer_param.mutable_mhe_loss_param()->set_lambda_m(1.0f);
+		layer_param.mutable_mhe_loss_param()->set_lambda_m(10.0f);
 
 		MHELossLayer<Dtype> layer(layer_param);
 		layer.SetUp(this->blob_bottom_vec_, this->blob_top_vec_);

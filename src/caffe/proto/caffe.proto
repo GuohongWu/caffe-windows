@@ -2229,7 +2229,11 @@ message LabelSpecificMarginParameter {
 }
 
 message MHELossParameter {
-  optional float lambda_m = 1 [default = 1.0];
+  optional float lambda_m = 1 [default = 1000.0];
+  optional float lambda_max = 2 [default = 1000.0];
+  optional float gamma = 3 [default = 0.005];
+  optional float power = 4 [default = 0.8];
+  optional float iter = 5 [default = 0.0];
 }
 
 
