@@ -472,6 +472,8 @@ message LayerParameter {
   optional ScalFixNormalizeParameter scalfix_normalize_param = 255;
   optional LabelSpecificMarginParameter label_specific_margin_param = 256;
   optional MHELossParameter mhe_loss_param = 257;
+  optional YOLOLabelParameter yolo_label_param = 258;
+  optional YOLOLossParameter yolo_loss_param = 259;
 }
 
 // Message that stores parameters used to apply transformation
@@ -2234,6 +2236,20 @@ message MHELossParameter {
   optional float gamma = 3 [default = 0.005];
   optional float power = 4 [default = 0.8];
   optional float iter = 5 [default = 0.0];
+}
+
+message YOLOLabelParameter {
+  optional int32 grid_w = 1;
+  optional int32 grid_h = 2;
+}
+
+message YOLOLossParameter {
+  optional int32 cls_nums = 1;
+  optional int32 bbox_nums = 2 [default = 2];
+  optional float lambda_obj = 3 [default = 1.0];
+  optional float lambda_noobj = 4 [default = 0.5];
+  optional float lambda_coord = 5 [default = 5.0];
+  repeated float bbox_prior = 6;
 }
 
 
