@@ -61,7 +61,7 @@ namespace caffe {
 
 		MHELossLayer<Dtype> layer(layer_param);
 		layer.SetUp(this->blob_bottom_vec_, this->blob_top_vec_);
-		GradientChecker<Dtype> checker(1e-3, 1e-3, caffe_rng_rand());
+		GradientChecker<Dtype> checker(1e-3, 3e-3, caffe_rng_rand());
 		// check the gradient for the first two bottom layers
 		checker.CheckGradientExhaustive(&layer, this->blob_bottom_vec_,
 			this->blob_top_vec_, 0);

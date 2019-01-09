@@ -247,6 +247,10 @@
     <ClCompile Include="..\..\src\caffe\layers\tv_loss_layer.cpp" />
     <ClCompile Include="..\..\src\caffe\layers\weighted_sigmoid_cross_entropy_loss_layer.cpp" />
     <ClCompile Include="..\..\src\caffe\layers\window_data_layer.cpp" />
+    <ClCompile Include="..\..\src\caffe\layers\yolov2_loss_layer.cpp" />
+    <ClCompile Include="..\..\src\caffe\layers\yolo_label_layer.cpp" />
+    <ClCompile Include="..\..\src\caffe\layers\yolo_loss_layer.cpp" />
+    <ClCompile Include="..\..\src\caffe\layers\yolo_passthrough_layer.cpp" />
     <ClCompile Include="..\..\src\caffe\layer_factory.cpp" />
     <ClCompile Include="..\..\src\caffe\net.cpp" />
     <ClCompile Include="..\..\src\caffe\parallel.cpp" />
@@ -417,6 +421,10 @@
     <ClInclude Include="..\..\include\caffe\layers\weighted_sigmoid_cross_entropy_loss_layer.hpp" />
     <ClInclude Include="..\..\include\caffe\layers\wider_face_data_layer.hpp" />
     <ClInclude Include="..\..\include\caffe\layers\window_data_layer.hpp" />
+    <ClInclude Include="..\..\include\caffe\layers\yolov2_loss_layer.hpp" />
+    <ClInclude Include="..\..\include\caffe\layers\yolo_label_layer.hpp" />
+    <ClInclude Include="..\..\include\caffe\layers\yolo_loss_layer.hpp" />
+    <ClInclude Include="..\..\include\caffe\layers\yolo_passthrough_layer.hpp" />
     <ClInclude Include="..\..\include\caffe\layer_factory.hpp" />
     <ClInclude Include="..\..\include\caffe\net.hpp" />
     <ClInclude Include="..\..\include\caffe\parallel.hpp" />
